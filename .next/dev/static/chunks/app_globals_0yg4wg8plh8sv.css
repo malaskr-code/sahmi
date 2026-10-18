@@ -4795,7 +4795,7 @@ body {
   transition: background .25s, color .25s;
 }
 
-body.dark {
+body.dark, html[data-theme="dark"] body {
   --cream: #0e1a2b;
   --paper: #17263a;
   --ink: #f4f0e7;

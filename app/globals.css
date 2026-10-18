@@ -5,7 +5,7 @@
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;background:var(--cream);color:var(--ink);font-family:var(--font-body);transition:background .25s,color .25s}
-body.dark{--cream:#0e1a2b;--paper:#17263a;--ink:#f4f0e7;--muted:#b7bdc4;--line:#2b3a4d;--soft:#1c2b40;--gold:#d5b33d;--gold-dark:#e4c957;--green:#75c99d;--red:#ed8d83;--shadow:0 14px 38px rgba(0,0,0,.2)}
+body.dark,html[data-theme="dark"] body{--cream:#0e1a2b;--paper:#17263a;--ink:#f4f0e7;--muted:#b7bdc4;--line:#2b3a4d;--soft:#1c2b40;--gold:#d5b33d;--gold-dark:#e4c957;--green:#75c99d;--red:#ed8d83;--shadow:0 14px 38px rgba(0,0,0,.2)}
 body[dir="rtl"]{font-family:var(--font-arabic)}
 button,input{font:inherit}
 button,a{-webkit-tap-highlight-color:transparent}
