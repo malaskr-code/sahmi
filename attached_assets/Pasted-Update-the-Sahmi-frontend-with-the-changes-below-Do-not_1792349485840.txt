@@ -1,0 +1,32 @@
+Update the Sahmi frontend with the changes below. Do not change anything else. Every change must work in English and Arabic (RTL), light and dark mode, and on mobile.
+
+1. SPACING
+- The home page is too crowded. Add clear space between the hero and every section after it.
+- Section vertical padding: 96px on desktop, 64px on mobile. Space between a section title and its content: 32px.
+- Keep the hero taller with more breathing room around the headline and button.
+
+2. HERO TEXT
+- Change the headline from "Give a gift that grows" to "A gift that grows". Arabic stays "هدية تكبر معك".
+
+3. REMOVE DEMO LABELS
+- Remove every mention that this is a demo: the "Demo: test money only" badge in the navbar, the footer line about it being a student demo, and any other demo or test-money text on any page.
+
+4. REMOVE SECTIONS
+- Remove the "A few good places to start" section completely (title and content).
+- Remove the "A gift without the guesswork" section completely (title and content).
+
+5. OCCASION THEMES MOVE INTO THE GIFT FLOW
+- Remove the occasions row (Eid, Graduation, Birthday, Newborn, Wedding, General) from the home page.
+- On the product details page, show "Choose a card theme" only AFTER the user has picked shares or a budget. Before that, it stays hidden.
+- Show the 6 themes as selectable cards with a small preview of each design. One must be selected before "Add to cart" becomes active.
+- Save the chosen theme with the gift in the cart. The cart page shows the chosen theme with a "Change" link back to the product page.
+
+6. NEW "EXPLORE" SECTION AT THE END OF THE HOME PAGE
+Replace the current explore section with:
+- Title: "Explore by sector" / "تصفح حسب القطاع".
+- Sector cards: Banks, Telecom, Real Estate, Logistics & Industry, Technology & Services. Each shows an icon, the sector name, and how many companies are in it. Clicking opens the Store filtered to that sector (/products?sector=...).
+- Below the sector cards, two wide cards side by side (stacked on mobile):
+  - "Received a gift?" / "وصلتك هدية؟" with a "Redeem your gift" button (links to /redeem, page comes later; show a "Coming soon" page for now).
+  - "Browse all companies" / "تصفح كل الشركات" with a button to /products.
+
+After the changes, tell me what you changed in 2 to 3 plain sentences.
