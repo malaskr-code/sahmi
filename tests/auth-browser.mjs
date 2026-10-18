@@ -15,9 +15,18 @@ const pending = new Map();
 let commandId = 0;
 let stage = "startup";
 let setupScriptId;
+const themeErrors = [];
 ws.addEventListener("message", ({ data }) => {
   const message = JSON.parse(data);
-  if (!message.id) return;
+  if (!message.id) {
+    const details = message.method === "Runtime.exceptionThrown"
+      ? message.params.exceptionDetails.text
+      : message.method === "Log.entryAdded" && message.params.entry.level === "error"
+        ? message.params.entry.text
+        : "";
+    if (/script tag while rendering|hydration|server rendered HTML|did not match/i.test(details)) themeErrors.push(details);
+    return;
+  }
   const task = pending.get(message.id);
   pending.delete(message.id);
   message.error ? task.reject(message.error) : task.resolve(message.result);
@@ -88,6 +97,7 @@ async function fill(id, value) {
 
 await cdp("Page.enable");
 await cdp("Runtime.enable");
+await cdp("Log.enable");
 let lang = "en";
 let created = false;
 try {
@@ -185,6 +195,7 @@ try {
   const me = await fetch(base + "/api/auth/me");
   assert.equal(me.status, 401);
   console.log("STEP 6–7 UI PASS: localized wrong-password message, EN/AR role-based account menu, protected links, logout, and cleared session.");
+  assert.deepEqual(themeErrors, [], "theme startup must not produce script or hydration errors");
 } finally {
   try {
     if (created) {
