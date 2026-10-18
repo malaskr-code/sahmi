@@ -1,0 +1,21 @@
+Read the skills before starting. This is steps 3 and 4: connect MongoDB and load products from the database with live prices. Do not change the design, the pages, or the text. Everything must keep working in English and Arabic (RTL), light and dark mode, and on mobile.
+
+STEP 3: DATABASE
+- lib/db.ts: one shared Mongoose connection using MONGODB_URI, cached globally so it is reused (required for Vercel). If MONGODB_URI is missing, stop and tell me.
+- Models in models/:
+  - User: name, email (unique), passwordHash, phone, role (user/admin, default user), createdAt
+  - Product (one per company): name, nameAr, description, descriptionAr, ticker, category (the sector, e.g. Banks), categoryAr, image, price, change, priceUpdatedAt, active (default true), createdAt
+  - Order: user (ref User), type (gift/topup), items (product ref, shares, price, occasion), fee, total, paidFromWallet, paidByCard, stripeSessionId (unique, sparse), status (pending/paid, default pending), createdAt
+- Seed script (npm run seed) that inserts the same 12 companies currently in data/sampleProducts.ts, with their EN/AR names, sectors, descriptions, and starting prices. Running it twice must not create duplicates (upsert by ticker).
+
+STEP 4: PRODUCTS FROM THE DATABASE
+- API routes:
+  - GET /api/products: all active products, with optional ?category= filter
+  - GET /api/products/[id]: one product, 404 if not found
+  - Both return 500 with a clear message if the database fails.
+- Change the single product helper so every page (Home featured, Store, Product details, Explore sector counts, Cart) reads from these routes instead of data/sampleProducts.ts. Then delete data/sampleProducts.ts.
+- Show loading states while products load, and a clear error message with a retry button if loading fails.
+
+LIVE PRICES
+- Use the oanor Kuwait stock API on the server only: base https://api.oanor.com/kuwait-stock-api, header x-oanor-key with KUWAIT_STOCK_API_KEY. If the key is missing, stop and tell me.
+- First, call /v1/meta or /v1/screener once to confirm the correct
