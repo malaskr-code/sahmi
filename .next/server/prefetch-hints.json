@@ -22,6 +22,20 @@
       }
     }
   },
+  "/access-denied": {
+    "hints": 64,
+    "slots": {
+      "children": {
+        "hints": 96,
+        "slots": {
+          "children": {
+            "hints": 160,
+            "slots": null
+          }
+        }
+      }
+    }
+  },
   "/cart": {
     "hints": 64,
     "slots": {

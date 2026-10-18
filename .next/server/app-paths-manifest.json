@@ -1,6 +1,7 @@
 {
   "/_global-error/page": "app/_global-error/page.js",
   "/_not-found/page": "app/_not-found/page.js",
+  "/access-denied/page": "app/access-denied/page.js",
   "/admin/page": "app/admin/page.js",
   "/api/admin/route": "app/api/admin/route.js",
   "/api/auth/login/route": "app/api/auth/login/route.js",
