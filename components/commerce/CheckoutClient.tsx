@@ -25,7 +25,6 @@ export default function CheckoutClient() {
   const [quoteToken, setQuoteToken] = useState("");
   const [quoting, setQuoting] = useState(false);
   const [quoteError, setQuoteError] = useState("");
-  const [expiredRefresh, setExpiredRefresh] = useState(0);
   const [refreshingPrice, setRefreshingPrice] = useState(false);
   const [priceFresh, setPriceFresh] = useState(false);
   const [pending, setPending] = useState(false);
@@ -50,8 +49,8 @@ export default function CheckoutClient() {
     return () => { active = false; };
   }, [productId, lang, gift?.product.name, gift?.product.nameAr]);
 
-  const getQuote = useCallback(async (signal?: AbortSignal) => {
-    if (!productId || shares < 1) return;
+  const getQuote = useCallback(async (signal?: AbortSignal): Promise<boolean> => {
+    if (!productId || shares < 1) return false;
     setQuoting(true); setQuote(null); setQuoteError(""); setQuoteToken("");
     try {
       const response = await fetch("/api/checkout", {
@@ -63,48 +62,40 @@ export default function CheckoutClient() {
       if (!response.ok || !body?.quote || !body?.quoteToken) throw new Error(responseError(copy, body, copy.checkout.error));
       setQuote(body.quote);
       setQuoteToken(body.quoteToken);
+      return true;
     } catch (error) {
-      if (signal?.aborted) return;
+      if (signal?.aborted) return false;
       setQuote(null);
       setQuoteError(error instanceof Error ? error.message : copy.checkout.error);
-    } finally { if (!signal?.aborted) setQuoting(false); }
+      return false;
+    } finally {
+      if (!signal?.aborted) {
+        setQuoting(false);
+        setRefreshingPrice(false);
+      }
+    }
   }, [productId, shares, payment, lang, copy]);
+
+  const refreshPriceAndQuote = useCallback(async () => {
+    if (!productId) return;
+    setRefreshingPrice(true); setPriceFresh(false); setQuote(null); setQuoteToken(""); setQuoteError("");
+    const refreshed = await getQuote();
+    setPriceFresh(refreshed);
+  }, [productId, getQuote]);
 
   useEffect(() => {
     if (!productId || shares < 1) return;
     const controller = new AbortController();
     void getQuote(controller.signal);
     return () => controller.abort();
-  }, [getQuote, productId, shares, payment, expiredRefresh]);
+  }, [getQuote, productId, shares, payment]);
 
   useEffect(() => {
     if (!quote?.lockExpiresAt) return;
     const wait = new Date(quote.lockExpiresAt).getTime() - Date.now();
-    const timer = window.setTimeout(async () => {
-      setRefreshingPrice(true); setPriceFresh(false); setQuote(null); setQuoteToken("");
-      try {
-        await getProduct(productId);
-        setPriceFresh(true);
-      } catch {
-        setQuoteError(copy.checkout.error);
-      } finally {
-        setRefreshingPrice(false);
-        setExpiredRefresh(value => value + 1);
-      }
-    }, Math.max(0, wait));
+    const timer = window.setTimeout(() => { void refreshPriceAndQuote(); }, Math.max(0, wait));
     return () => window.clearTimeout(timer);
-  }, [quote?.lockExpiresAt, productId, copy.checkout.error]);
-
-  async function refreshPriceAndQuote() {
-    if (!productId) return;
-    setRefreshingPrice(true); setPriceFresh(false); setQuoteError(""); setQuote(null); setQuoteToken("");
-    try {
-      await getProduct(productId);
-      setPriceFresh(true);
-      setExpiredRefresh(value => value + 1);
-    } catch { setQuoteError(copy.checkout.error); }
-    finally { setRefreshingPrice(false); }
-  }
+  }, [quote?.lockExpiresAt, refreshPriceAndQuote]);
 
   async function submitGift(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSubmitError("");

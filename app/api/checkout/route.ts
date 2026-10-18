@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     return paymentJson(request, 400, "invalidRequest");
   } catch (error) {
     if (error instanceof PaymentError) return paymentJson(request, error.status, error.code);
-    if (error instanceof StripeConfigurationError) return paymentJson(request, 503, "checkoutUnavailable");
+    if (error instanceof StripeConfigurationError) return paymentJson(request, 503, "stripeError");
     console.error("Unable to create a checkout session.", error instanceof Error ? error.name : "unknown");
     if (error instanceof mongoose.Error.ValidationError) return paymentJson(request, 400, "invalidRequest");
     return paymentServerError(request);

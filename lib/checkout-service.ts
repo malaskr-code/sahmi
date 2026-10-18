@@ -11,9 +11,10 @@ import { createGiftCode, encryptGiftCode, hashGiftCode } from "@/lib/gift-codes"
 import { getStripeClient } from "@/lib/stripe";
 import { readReservedWalletFils, readWalletFils } from "@/lib/wallet";
 import { PaymentError } from "@/lib/payment-errors";
-import { refreshPrices } from "@/lib/price-refresh";
 import { connectDB } from "@/lib/db";
 import { signPriceQuote, verifyPriceQuote } from "@/lib/price-quote";
+import { findCheckoutProduct } from "@/lib/checkout-products";
+import Stripe from "stripe";
 
 const CHECKOUT_RESERVATION_SECONDS = 31 * 60;
 const PRICE_LOCK_MS = 10 * 60 * 1000;
@@ -51,7 +52,7 @@ function sumKwdFils(amount: number) {
   try {
     return kwdToFils(amount);
   } catch {
-    throw new PaymentError("productUnavailable", 409);
+    throw new PaymentError("invalidAmount", 409);
   }
 }
 
@@ -187,23 +188,6 @@ async function inMongoTransaction<T>(operation: (session: ClientSession) => Prom
   }
 }
 
-async function getActiveProduct(productId: string) {
-  await connectDB();
-  await refreshPrices();
-  const filter = {
-    active: true,
-    $or: [
-      { slug: productId },
-      ...(mongoose.isValidObjectId(productId) ? [{ _id: new Types.ObjectId(productId) }] : []),
-    ],
-  };
-  const product = await Product.findOne(filter).lean();
-  if (!product) throw new PaymentError("productUnavailable", 404);
-  const unitPriceFils = sumKwdFils(Number(product.price));
-  if (!unitPriceFils) throw new PaymentError("productUnavailable", 409);
-  return { product, unitPriceFils };
-}
-
 export async function prepareGiftPriceQuote(userId: string, input: unknown) {
   if (!isPlainRecord(input)) throw new PaymentError("invalidRequest");
   const productId = typeof input.productId === "string" ? input.productId.trim() : "";
@@ -215,7 +199,8 @@ export async function prepareGiftPriceQuote(userId: string, input: unknown) {
     (payment !== "wallet" && payment !== "card" && payment !== "both")
   ) throw new PaymentError("invalidGift");
 
-  const { unitPriceFils } = await getActiveProduct(productId);
+  const product = await findCheckoutProduct(productId, { refreshPrice: true });
+  const unitPriceFils = sumKwdFils(Number(product.price));
   const subtotalFils = unitPriceFils * shares;
   const totalFils = subtotalFils + SERVICE_FEE_FILS;
   if (!Number.isSafeInteger(totalFils) || totalFils > MAX_STRIPE_AMOUNT_FILS) throw new PaymentError("invalidAmount");
@@ -282,7 +267,7 @@ async function saveStripeSession(
       locale: "auto",
     }, { idempotencyKey: `sahmi-checkout-${orderId}` });
 
-    if (!checkoutSession.url) throw new PaymentError("checkoutUnavailable", 502);
+    if (!checkoutSession.url) throw new PaymentError("stripeError", 502);
     const saved = await Order.updateOne(
       { _id: orderId, user: new Types.ObjectId(user.id), status: "pending" },
       {
@@ -299,6 +284,15 @@ async function saveStripeSession(
       try { await stripe.checkout.sessions.expire(checkoutSession.id); } catch { /* best-effort cleanup; no payment URL is returned */ }
     }
     await Order.updateOne({ _id: orderId, status: "pending" }, { $set: { status: "cancelled" } }).catch(() => undefined);
+    if (error instanceof Stripe.errors.StripeError) {
+      console.error("Stripe Checkout session creation failed.", {
+        type: error.type,
+        code: error.code ?? null,
+        statusCode: error.statusCode ?? null,
+        param: error.param ?? null,
+      });
+      throw new PaymentError("stripeError", 502);
+    }
     throw error;
   }
 }
@@ -338,9 +332,8 @@ export async function startGiftCheckout(user: { id: string; email: string }, inp
     userId: user.id, productId: gift.productId, shares: gift.shares, payment: gift.payment,
   });
   if (!priceQuote) throw new PaymentError("priceQuoteExpired", 409);
-  getStripeClient();
   if (!process.env.CODE_SECRET) throw new PaymentError("checkoutUnavailable", 503);
-  const { product } = await getActiveProduct(gift.productId);
+  const product = await findCheckoutProduct(gift.productId);
   const unitPriceFils = priceQuote.unitPriceFils;
   const subtotalFils = unitPriceFils * gift.shares;
   const totalFils = subtotalFils + SERVICE_FEE_FILS;
