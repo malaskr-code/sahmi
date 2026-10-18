@@ -2310,16 +2310,6 @@
     }
   }
 
-  .\!bg-black\/10 {
-    background-color: #0000001a !important;
-  }
-
-  @supports (color: color-mix(in lab, red, red)) {
-    .\!bg-black\/10 {
-      background-color: color-mix(in oklab, var(--color-black) 10%, transparent) !important;
-    }
-  }
-
   .\!bg-transparent {
     background-color: #0000 !important;
   }
@@ -2929,10 +2919,6 @@
   .text-xs {
     font-size: var(--text-xs);
     line-height: var(--tw-leading, var(--text-xs--line-height));
-  }
-
-  .\!text-\[10px\] {
-    font-size: 10px !important;
   }
 
   .text-\[0\.8rem\] {
