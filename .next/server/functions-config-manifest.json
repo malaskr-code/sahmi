@@ -1,6 +1,11 @@
 {
   "version": 1,
   "functions": {
+    "/api/admin": {},
+    "/api/auth/login": {},
+    "/api/auth/logout": {},
+    "/api/auth/me": {},
+    "/api/auth/signup": {},
     "/api/products": {},
     "/api/products/[id]": {}
   }

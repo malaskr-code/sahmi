@@ -8,6 +8,7 @@ if (process.env.REPLIT_DEV_DOMAIN) {
 const nextConfig: NextConfig = {
   devIndicators: false,
   allowedDevOrigins,
+  experimental: { authInterrupts: true },
 };
 
 export default nextConfig;
