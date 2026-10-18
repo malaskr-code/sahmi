@@ -61,6 +61,12 @@
       "regex": "^/products(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/products(?:/)?$"
+    },
+    {
+      "page": "/redeem",
+      "regex": "^/redeem(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/redeem(?:/)?$"
     }
   ],
   "dataRoutes": [],

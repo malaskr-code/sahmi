@@ -104,6 +104,11 @@ self.__SERVER_FILES_MANIFEST={
       }
     },
     "outputFileTracingRoot": "/home/runner/workspace",
+    "allowedDevOrigins": [
+      "127.0.0.1",
+      "localhost",
+      "e7c03b63-6112-4384-83da-57380c07c0f3-00-lsdiklelwv4y.spock.replit.dev"
+    ],
     "enablePrerenderSourceMaps": true,
     "cacheComponents": false,
     "cacheLife": {

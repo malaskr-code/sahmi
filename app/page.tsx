@@ -31,8 +31,8 @@ export default function HomePage() {
 
   return (
     <div>
-      <section className="page-shell pt-8 md:pt-12">
-        <div className="relative overflow-hidden rounded-[18px] border border-[var(--line)] bg-[var(--paper)] px-7 py-20 shadow-[var(--shadow)] md:px-16 md:py-28">
+      <section className="page-shell home-hero">
+        <div className="relative flex min-h-[540px] items-center overflow-hidden rounded-[18px] border border-[var(--line)] bg-[var(--paper)] px-7 py-16 shadow-[var(--shadow)] md:min-h-[640px] md:px-16 md:py-24">
           <div className="pointer-events-none absolute -right-24 -top-28 h-[360px] w-[360px] rounded-full border border-[var(--gold)]/25 md:right-[-30px] md:top-[-90px] md:h-[510px] md:w-[510px]" />
           <div className="pointer-events-none absolute -right-12 -top-16 h-[270px] w-[270px] rounded-full border border-[var(--gold)]/15 md:right-[20px] md:top-[-30px] md:h-[390px] md:w-[390px]" />
           <div className="pointer-events-none absolute right-[10%] top-[34%] hidden h-2 w-2 rounded-full bg-[var(--gold)] md:block" />
@@ -108,7 +108,7 @@ export default function HomePage() {
         </div>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <article className="card flex flex-col items-start justify-between gap-6 p-6 md:flex-row md:items-center md:p-8">
+          <article className="card flex flex-col items-start justify-between gap-6 p-6 md:p-8 xl:flex-row xl:items-center">
             <div>
               <h3 className="font-display text-2xl font-semibold">{t.explore.receivedTitle}</h3>
               <p className="mt-2 max-w-sm text-sm leading-6 text-[var(--muted)]">{t.explore.receivedText}</p>
@@ -118,7 +118,7 @@ export default function HomePage() {
               <ArrowRight size={16} />
             </Link>
           </article>
-          <article className="card flex flex-col items-start justify-between gap-6 p-6 md:flex-row md:items-center md:p-8">
+          <article className="card flex flex-col items-start justify-between gap-6 p-6 md:p-8 xl:flex-row xl:items-center">
             <div>
               <h3 className="font-display text-2xl font-semibold">{t.explore.browseTitle}</h3>
               <p className="mt-2 max-w-sm text-sm leading-6 text-[var(--muted)]">{t.explore.browseText}</p>

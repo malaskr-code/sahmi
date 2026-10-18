@@ -23,7 +23,14 @@ export default function ProductDetailPage() {
   const [added, setAdded] = useState(false);
 
   useEffect(() => {
-    if (gift?.product.id === product?.id) setTheme(gift.theme);
+    if (gift && gift.product.id === product?.id) {
+      setTheme(gift.theme);
+      setShares(gift.shares);
+      setSharesPicked(true);
+    } else {
+      setTheme(null);
+      setSharesPicked(false);
+    }
   }, [gift, product?.id]);
 
   const count =
@@ -41,7 +48,7 @@ export default function ProductDetailPage() {
   const currency = (amount: number) => formatKwd(amount, lang);
 
   const add = () => {
-    if (!product || count < 1 || !theme) return;
+    if (!product || count < 1 || !hasPickedAmount || !theme) return;
     if (gift) {
       setConfirm(true);
       return;
@@ -80,7 +87,7 @@ export default function ProductDetailPage() {
         {t.product.back}
       </Link>
       <div className="mt-6 grid gap-7 lg:grid-cols-[1fr_420px]">
-        <div className="card overflow-hidden p-7 md:p-10">
+        <div className="card h-fit overflow-hidden p-7 md:p-10">
           <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[var(--gold)]/40 bg-[var(--soft)] font-display text-lg font-bold text-[var(--gold-dark)]">
             {product.name.split(/\s+/).map((word) => word[0]).slice(0, 3).join("")}
           </div>
@@ -240,7 +247,7 @@ export default function ProductDetailPage() {
           )}
           <p className="mt-3 text-xs leading-5 text-[var(--muted)]">{t.product.feeNote}</p>
           <button
-            disabled={count < 1 || !theme}
+            disabled={count < 1 || !hasPickedAmount || !theme}
             onClick={add}
             className="gold-button mt-5 w-full disabled:cursor-not-allowed disabled:opacity-50"
           >

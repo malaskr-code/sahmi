@@ -22,6 +22,7 @@ body[dir="rtl"] .font-display{font-family:var(--font-arabic)}
 .fade-up{animation:rise .55s both}
 @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 .arabic{font-family:var(--font-arabic)}
-.home-section{padding-block:64px}
 @media(max-width:700px){.page-shell{padding:0 18px}}
-@media(min-width:768px){.home-section{padding-block:96px}}
+.home-hero{padding-top:32px}
+.home-section{padding-block:64px}
+@media(min-width:768px){.home-hero{padding-top:48px}.home-section{padding-block:96px}}

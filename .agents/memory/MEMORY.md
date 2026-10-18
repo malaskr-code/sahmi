@@ -1,0 +1,1 @@
+- [Sahmi presentation](sahmi-presentation.md) — keep demo/test-money labels out of visible copy without expanding the financial functionality.
