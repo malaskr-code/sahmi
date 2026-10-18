@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
+@import "tailwindcss";
+
+:root{--cream:#faf7f0;--paper:#fffefa;--ink:#1f1f1f;--muted:#77746d;--gold:#c9a227;--gold-dark:#96751a;--line:#eae5d9;--soft:#f2eee4;--green:#287b56;--red:#bc554e;--navy:#0e1a2b;--navy-card:#17263a;--shadow:0 12px 32px rgba(71,57,27,.07);--font-body:'Inter',sans-serif;--font-display:'Playfair Display',serif;--font-arabic:'IBM Plex Sans Arabic',sans-serif}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--cream);color:var(--ink);font-family:var(--font-body);transition:background .25s,color .25s}
+body.dark{--cream:#0e1a2b;--paper:#17263a;--ink:#f4f0e7;--muted:#b7bdc4;--line:#2b3a4d;--soft:#1c2b40;--gold:#d5b33d;--gold-dark:#e4c957;--green:#75c99d;--red:#ed8d83;--shadow:0 14px 38px rgba(0,0,0,.2)}
+body[dir="rtl"]{font-family:var(--font-arabic)}
+button,input{font:inherit}
+button,a{-webkit-tap-highlight-color:transparent}
+a{color:inherit;text-decoration:none}
+.font-display{font-family:var(--font-display)}
+body[dir="rtl"] .font-display{font-family:var(--font-arabic)}
+.page-shell{max-width:1200px;margin:auto;padding:0 28px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+.gold-button{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:var(--gold);color:#211d13;border:0;border-radius:999px;padding:14px 23px;font-weight:700;transition:transform .2s,background .2s;cursor:pointer}
+.gold-button:hover{transform:translateY(-2px);background:#d7b447}
+.outline-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:12px 18px;background:transparent;cursor:pointer;transition:background .2s,border .2s}
+.outline-button:hover{background:var(--soft);border-color:var(--gold)}
+.pill{display:inline-flex;align-items:center;border-radius:999px;padding:6px 12px;background:var(--soft);color:var(--muted);font-size:12px;font-weight:600}
+.fade-up{animation:rise .55s both}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.arabic{font-family:var(--font-arabic)}
+@media(max-width:700px){.page-shell{padding:0 18px}}

@@ -1,0 +1,58 @@
+Read replit.md before starting. This is steps 1 and 2 only: project setup and frontend pages. Do not build the database, login, or payments yet.
+
+PROJECT
+Build "Sahmi" (سهمي), a store where people buy shares of Boursa Kuwait companies as gifts. Demo only: test money, no real shares.
+
+STEP 1: SETUP & DESIGN
+- Next.js App Router with TypeScript and Tailwind.
+- English and Arabic toggle. Arabic flips the whole layout to right-to-left. All text in translation files (EN and AR), nothing hardcoded in components.
+- Light theme by default: ivory/cream background (#FAF7F0 range), white cards, gold accent (#C9A227 range) for buttons and highlights, charcoal text (#1F1F1F range).
+- Dark mode toggle: deep navy background (#0E1A2B range), slightly lighter navy cards, same gold, off-white text.
+- Remember theme and language in localStorage.
+- Fonts: elegant serif for headings (Playfair Display), clean sans for body (Inter), IBM Plex Sans Arabic for Arabic.
+- Premium gift feel: generous spacing, soft shadows, rounded corners (12px cards, full round on badges).
+- Mobile first, no horizontal scroll on phones.
+
+SHARED COMPONENTS (in components/)
+- Navbar: Sahmi logo (gold wordmark "Sahmi" with "سهمي" under it), links Home and Store, language toggle, theme toggle, cart icon with item count, Log in button (links to /login, page comes later).
+- Small "Demo: test money only" badge in the navbar.
+- Footer: short line "Sahmi is a student demo project. No real money or shares." in EN and AR.
+- ProductCard, Button, Badge components reused across pages.
+
+STEP 2: PAGES
+1. Home (/)
+   - Hero: headline "Give a gift that grows" / "هدية تكبر معك", subtext "Gift shares of Kuwaiti companies for Eid, graduations, and birthdays." with an Arabic equivalent, gold "Browse the store" button.
+   - How it works, 3 steps with icons: Choose shares, Send the card, They own it.
+   - Occasions row: Eid, Graduation, Birthday, Newborn, Wedding, General (visual cards only for now).
+   - Featured companies: 4 product cards.
+
+2. Store (/products)
+   - Grid of company cards: logo placeholder (circle with initials), name in current language, sector, price in KWD with 3 decimals, daily % change in green (up) or red (down).
+   - Filter by sector and search by name.
+
+3. Product details (/products/[id])
+   - Company name, sector, one-line description, price, daily change.
+   - Gift builder:
+     - Toggle: "By shares" or "By budget".
+     - By shares: buttons 10, 50, 100, and a custom number field.
+     - By budget: KWD field; round down to whole shares and show "That's 35 shares (19.950 KWD)".
+     - Live breakdown: shares × price, service fee 0.250 KWD, total.
+     - "Add to cart" button.
+
+4. Cart (/cart)
+   - Holds ONE gift. Adding a new gift when one exists asks "Replace your current gift?" first.
+   - Shows company, shares, price per share, subtotal, fee, total.
+   - Remove button, empty state ("Your cart is empty" + Browse the store).
+   - "Checkout" button disabled with a "Coming soon" label.
+   - Cart saved in localStorage.
+
+TEMPORARY DATA
+- Put 12 companies in ONE file, data/sampleProducts.ts, with clearly sample prices. This file will be replaced by MongoDB in step 3, so every page must read products through one helper function, not import the array directly.
+- Companies: Kuwait Finance House, National Bank of Kuwait, Zain, Boubyan Bank, Agility, Gulf Bank, Mabanee, Humansoft, Boursa Kuwait, Commercial Bank of Kuwait, Warba Bank, Ooredoo Kuwait. Each with name, nameAr, sector, sectorAr, description, descriptionAr, price, change.
+
+QUALITY
+- Every page works in English and Arabic, light and dark mode, and on mobile.
+- Show loading and empty states, never a blank screen.
+- Money always in KWD with 3 decimals.
+
+After each step, tell me what you changed and how to test it, in 2 to 3 plain sentences.
