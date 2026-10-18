@@ -49,7 +49,7 @@ test("JWT lasts exactly seven days and cookie is httpOnly, secure and sameSite",
   assert.equal(claims.aud, "sahmi-account");
   assert.equal(sessionCookieOptions.httpOnly, true);
   assert.equal(sessionCookieOptions.secure, true);
-  assert.equal(sessionCookieOptions.sameSite, "lax");
+  assert.equal(sessionCookieOptions.sameSite, "none");
   assert.equal(sessionCookieOptions.maxAge, 604800);
 });
 

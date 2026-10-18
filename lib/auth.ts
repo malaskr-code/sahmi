@@ -10,7 +10,7 @@ import type { AuthUser } from "./auth-validation";
 export const SESSION_COOKIE = "__Host-sahmi-session";
 export const SESSION_SECONDS = 7 * 24 * 60 * 60;
 export const sessionCookieOptions = {
-  httpOnly: true, secure: true, sameSite: "lax" as const, path: "/", maxAge: SESSION_SECONDS,
+  httpOnly: true, secure: true, sameSite: "none" as const, path: "/", maxAge: SESSION_SECONDS,
 };
 
 function signingKey() {

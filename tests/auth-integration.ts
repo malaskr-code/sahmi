@@ -58,7 +58,7 @@ async function main() {
   const setCookie = loginResponse.headers.get("set-cookie") ?? "";
   const attributes = setCookie.split(";").slice(1).map(value => value.trim().toLowerCase());
   console.log("Session cookie attributes:", attributes.join("; "));
-  assert.ok(attributes.includes("httponly") && attributes.includes("secure") && attributes.includes("samesite=lax") && attributes.includes("max-age=604800"));
+  assert.ok(attributes.includes("httponly") && attributes.includes("secure") && attributes.includes("samesite=none") && attributes.includes("max-age=604800"));
   const cookie = setCookie.split(";")[0];
   const claims = decodeJwt(cookie.slice(cookie.indexOf("=") + 1));
   assert.equal(claims.exp! - claims.iat!, 604800);
