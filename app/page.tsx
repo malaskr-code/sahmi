@@ -12,7 +12,8 @@ import {
   Truck,
   Wallet,
 } from "lucide-react";
-import { getProducts } from "@/lib/products";
+import { useProducts } from "@/lib/use-products";
+import { ProductFeedback } from "@/components/ProductFeedback";
 import { useStore } from "@/lib/store";
 import { SECTOR_GROUPS } from "@/data/sectorGroups";
 
@@ -27,7 +28,7 @@ const sectorIcons = {
 
 export default function HomePage() {
   const { t } = useStore();
-  const products = getProducts();
+  const { products, loading, error, retry } = useProducts();
 
   return (
     <div>
@@ -81,7 +82,8 @@ export default function HomePage() {
           <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--gold-dark)]">{t.explore.eyebrow}</p>
           <h2 className="font-display mt-3 text-3xl font-semibold md:text-4xl">{t.explore.title}</h2>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+        <ProductFeedback loading={loading} error={error} retry={retry} />
+        {!loading && !error && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
           {SECTOR_GROUPS.map((group) => {
             const Icon = sectorIcons[group.id];
             const count = products.filter((product) =>
@@ -105,7 +107,7 @@ export default function HomePage() {
               </Link>
             );
           })}
-        </div>
+        </div>}
 
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           <article className="card flex flex-col items-start justify-between gap-6 p-6 md:p-8 xl:flex-row xl:items-center">

@@ -780,6 +780,10 @@
     margin-block: calc(var(--spacing) * 6);
   }
 
+  .my-7 {
+    margin-block: calc(var(--spacing) * 7);
+  }
+
   .ms-1 {
     margin-inline-start: var(--spacing);
   }

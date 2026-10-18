@@ -4,11 +4,15 @@ import { ArrowRight, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { formatKwd, SERVICE_FEE } from "@/lib/products";
 import { CardThemePreview } from "@/components/CardThemePreview";
 import { useStore } from "@/lib/store";
+import { useProducts } from "@/lib/use-products";
+import { ProductFeedback } from "@/components/ProductFeedback";
 export default function CartPage(){
  const {t,lang,gift,setGift}=useStore();
+ const {product:currentProduct,loading,error,notFound,retry}=useProducts(gift?.product.id??null);
  const currency=(amount:number)=>formatKwd(amount,lang);
  if(!gift)return <div className="page-shell min-h-[55vh] pt-12 md:pt-16"><p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--gold-dark)]">{t.cart.title}</p><h1 className="font-display mt-3 text-4xl font-semibold md:text-5xl">{t.cart.emptyTitle}</h1><p className="mt-3 text-[var(--muted)]">{t.cart.emptyText}</p><div className="card mt-8 flex min-h-72 flex-col items-center justify-center text-center"><div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--soft)] text-[var(--gold-dark)]"><ShoppingBag size={24}/></div><p className="mt-5 max-w-sm leading-6 text-[var(--muted)]">{t.cart.emptyText}</p><Link href="/products" className="gold-button mt-6">{t.cart.browse}<ArrowRight size={16}/></Link></div></div>;
- const product=gift.product,name=lang==="ar"?product.nameAr:product.name;
+ if(loading||error||!currentProduct)return <div className="page-shell min-h-[55vh] pt-12 md:pt-16"><h1 className="font-display text-4xl font-semibold">{t.cart.title}</h1><ProductFeedback loading={loading||(!error&&!currentProduct)} error={error} notFound={notFound} retry={retry}/>{notFound&&<button onClick={()=>setGift(null)} className="outline-button">{t.cart.remove}</button>}</div>;
+ const product=currentProduct,name=lang==="ar"?product.nameAr:product.name;
  return <div className="page-shell min-h-[55vh] pt-12 md:pt-16">
   <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--gold-dark)]">{t.cart.title}</p><h1 className="font-display mt-3 text-4xl font-semibold md:text-5xl">{t.cart.title}</h1><p className="mt-3 text-[var(--muted)]">{t.cart.subtitle}</p>
   <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_380px]">

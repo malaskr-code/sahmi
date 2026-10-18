@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import en from "@/data/en";
 import ar from "@/data/ar";
 import { CARD_THEME_IDS, type CardThemeId } from "@/data/cardThemes";
-import type { Product } from "@/data/sampleProducts";
+import type { Product } from "@/lib/product-types";
 type Lang="en"|"ar";
 type Gift={product:Product;shares:number;theme:CardThemeId};
 type StoreContextType={lang:Lang; t:typeof en; dark:boolean; setLang:(v:Lang)=>void; toggleTheme:()=>void; gift:Gift|null; setGift:(v:Gift|null)=>void};

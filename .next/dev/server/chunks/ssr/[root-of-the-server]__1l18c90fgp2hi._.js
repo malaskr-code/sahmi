@@ -450,6 +450,9 @@ const ar = {
         links: "اكتشف"
     },
     common: {
+        pricesAsOf: "الأسعار كما في",
+        pricesUnavailable: "وقت تحديث الأسعار غير متوفر.",
+        notFound: "هذه الشركة لم تعد متاحة.",
         kwd: "د.ك",
         change: "التغير اليومي",
         loading: "نبحث عن هدايا مميزة…",
@@ -609,6 +612,9 @@ const en = {
         links: "Explore"
     },
     common: {
+        pricesAsOf: "Prices as of",
+        pricesUnavailable: "Price update time is unavailable.",
+        notFound: "This company is no longer available.",
         kwd: "KWD",
         change: "daily change",
         loading: "Finding thoughtful gifts…",

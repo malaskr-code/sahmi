@@ -7,6 +7,6 @@ const ar = {
  cart:{title:"هديتك",subtitle:"لفتة جميلة، جاهزة للإهداء.",emptyTitle:"فكرة جميلة تبدأ من هنا.",emptyText:"تنتظر حقيبة هداياك أول سهم.",browse:"تسوق الهدايا",company:"الشركة",shares:"الأسهم",price:"سعر السهم",subtotal:"المجموع",fee:"رسوم الخدمة",total:"الإجمالي",remove:"إزالة الهدية",checkout:"متابعة إلى الدفع",coming:"قريباً",theme:"تصميم البطاقة",changeTheme:"تغيير",removed:"تمت إزالة الهدية"},
  redeem:{title:"قريباً",subtitle:"ستتوفر خدمة استرداد الهدايا قريباً.",back:"تصفح الشركات"},
  footer:{about:"طريقة بسيطة ومدروسة للاحتفال بمن تحب.",links:"اكتشف"},
- common:{kwd:"د.ك",change:"التغير اليومي",loading:"نبحث عن هدايا مميزة…",error:"تعذر تحميل المتجر.",retry:"حاول مرة أخرى",companies:"شركة",samplePrice:"سعر السهم",decrease:"تقليل عدد الأسهم",increase:"زيادة عدد الأسهم",sectors:{Banking:"الخدمات المصرفية",Telecommunications:"الاتصالات",Logistics:"الخدمات اللوجستية","Real Estate":"العقارات",Education:"التعليم","Financial Services":"الخدمات المالية"}},
+ common:{pricesAsOf:"الأسعار كما في",pricesUnavailable:"وقت تحديث الأسعار غير متوفر.",notFound:"هذه الشركة لم تعد متاحة.",kwd:"د.ك",change:"التغير اليومي",loading:"نبحث عن هدايا مميزة…",error:"تعذر تحميل المتجر.",retry:"حاول مرة أخرى",companies:"شركة",samplePrice:"سعر السهم",decrease:"تقليل عدد الأسهم",increase:"زيادة عدد الأسهم",sectors:{Banking:"الخدمات المصرفية",Telecommunications:"الاتصالات",Logistics:"الخدمات اللوجستية","Real Estate":"العقارات",Education:"التعليم","Financial Services":"الخدمات المالية"}},
 };
 export default ar;

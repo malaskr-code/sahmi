@@ -6,12 +6,15 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, Check, Minus, Plus } from "lucide-react";
 import { CARD_THEME_IDS, type CardThemeId } from "@/data/cardThemes";
 import { CardThemePreview } from "@/components/CardThemePreview";
-import { getProduct, formatKwd, SERVICE_FEE } from "@/lib/products";
+import { formatKwd, SERVICE_FEE } from "@/lib/products";
+import { useProducts } from "@/lib/use-products";
+import { ProductFeedback } from "@/components/ProductFeedback";
+import { PricesAsOf } from "@/components/PricesAsOf";
 import { useStore } from "@/lib/store";
 
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
-  const product = getProduct(params.id);
+  const { product, loading, error, notFound, retry } = useProducts(params.id);
   const { t, lang, gift, setGift } = useStore();
   const [mode, setMode] = useState<"shares" | "budget">("shares");
   const [shares, setShares] = useState(10);
@@ -63,19 +66,14 @@ export default function ProductDetailPage() {
     setAdded(true);
   };
 
-  if (!product) {
+  if (loading || error || !product) {
     return (
       <div className="page-shell min-h-[55vh] pt-16">
         <Link href="/products" className="outline-button">
           <ArrowLeft size={16} />
           {t.product.back}
         </Link>
-        <div className="card mt-8 p-8 text-center">
-          {t.common.error}{" "}
-          <Link className="text-[var(--gold-dark)] underline" href="/products">
-            {t.product.back}
-          </Link>
-        </div>
+        <ProductFeedback loading={loading} error={error} notFound={notFound} retry={retry} />
       </div>
     );
   }
@@ -108,6 +106,7 @@ export default function ProductDetailPage() {
               {product.change.toFixed(2)}% <span className="text-[var(--muted)]">{t.common.change}</span>
             </p>
           </div>
+          <PricesAsOf products={[product]} />
         </div>
 
         <aside id="gift-builder" className="card h-fit p-6 md:p-7">

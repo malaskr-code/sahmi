@@ -1,1 +1,2 @@
 - [Sahmi presentation](sahmi-presentation.md) — keep demo/test-money labels out of visible copy without expanding the financial functionality.
+- [Stock API quota](stock-api-quota.md) — the small oanor allowance requires batched, infrequent server-side refreshes, including failure cooldowns.

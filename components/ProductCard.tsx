@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import type { Product } from "@/data/sampleProducts";
+import type { Product } from "@/lib/product-types";
 import { formatKwd } from "@/lib/products";
 import { useStore } from "@/lib/store";
 export function ProductCard({product}:{product:Product}){
