@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { requestUser } from "@/lib/auth";
 import { readAuthBody, sameOrigin } from "@/lib/auth-response";
 import { connectDB } from "@/lib/db";
-import { startGiftCheckout, startTopupCheckout } from "@/lib/checkout-service";
+import { prepareGiftPriceQuote, startGiftCheckout, startTopupCheckout } from "@/lib/checkout-service";
 import { PaymentError, paymentJson, paymentServerError } from "@/lib/payment-errors";
 import { StripeConfigurationError } from "@/lib/stripe";
 
@@ -12,13 +12,19 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return paymentJson(request, 403, "invalidRequest");
   const user = await requestUser(request);
-  if (!user) return paymentJson(request, 401, "invalidRequest");
+  if (!user) return paymentJson(request, 401, "unauthorized");
   const body = await readAuthBody(request);
   if (!body) return paymentJson(request, 400, "invalidRequest");
 
   try {
     await connectDB();
     const origin = new URL(request.url).origin;
+    if (body.action === "quote") {
+      return Response.json(
+        { ok: true, ...await prepareGiftPriceQuote(user.id, body) },
+        { headers: { "Cache-Control": "no-store" } },
+      );
+    }
     if (body.action === "topup") {
       const result = await startTopupCheckout(user, body.amount, origin);
       return Response.json({ ok: true, ...result }, { headers: { "Cache-Control": "no-store" } });

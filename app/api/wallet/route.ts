@@ -14,7 +14,7 @@ const transactionTypes = ["topup", "gift_payment", "sale", "fee"] as const;
 
 export async function GET(request: Request) {
   const user = await requestUser(request);
-  if (!user) return paymentJson(request, 401, "invalidRequest");
+  if (!user) return paymentJson(request, 401, "unauthorized");
   const requestedType = new URL(request.url).searchParams.get("type") || "all";
   if (requestedType !== "all" && !transactionTypes.includes(requestedType as typeof transactionTypes[number])) {
     return paymentJson(request, 400, "invalidRequest");

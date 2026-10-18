@@ -13,6 +13,7 @@ import { readReservedWalletFils, readWalletFils } from "@/lib/wallet";
 import { PaymentError } from "@/lib/payment-errors";
 import { refreshPrices } from "@/lib/price-refresh";
 import { connectDB } from "@/lib/db";
+import { signPriceQuote, verifyPriceQuote } from "@/lib/price-quote";
 
 const CHECKOUT_RESERVATION_SECONDS = 31 * 60;
 const PRICE_LOCK_MS = 10 * 60 * 1000;
@@ -40,7 +41,10 @@ function getGiftInput(input: unknown) {
     typeof theme !== "string" || !CARD_THEME_IDS.includes(theme as CardThemeId) ||
     (payment !== "wallet" && payment !== "card" && payment !== "both")
   ) throw new PaymentError("invalidGift");
-  return { productId, recipientName, message, shares, theme: theme as CardThemeId, payment: payment as PaymentMode };
+  return {
+    productId, recipientName, message, shares, theme: theme as CardThemeId, payment: payment as PaymentMode,
+    quoteToken: typeof input.quoteToken === "string" ? input.quoteToken : "",
+  };
 }
 
 function sumKwdFils(amount: number) {
@@ -200,6 +204,46 @@ async function getActiveProduct(productId: string) {
   return { product, unitPriceFils };
 }
 
+export async function prepareGiftPriceQuote(userId: string, input: unknown) {
+  if (!isPlainRecord(input)) throw new PaymentError("invalidRequest");
+  const productId = typeof input.productId === "string" ? input.productId.trim() : "";
+  const shares = input.shares;
+  const payment = input.payment;
+  if (
+    !productId || productId.length > 100 ||
+    typeof shares !== "number" || !Number.isSafeInteger(shares) || shares < 1 ||
+    (payment !== "wallet" && payment !== "card" && payment !== "both")
+  ) throw new PaymentError("invalidGift");
+
+  const { unitPriceFils } = await getActiveProduct(productId);
+  const subtotalFils = unitPriceFils * shares;
+  const totalFils = subtotalFils + SERVICE_FEE_FILS;
+  if (!Number.isSafeInteger(totalFils) || totalFils > MAX_STRIPE_AMOUNT_FILS) throw new PaymentError("invalidAmount");
+  const [balanceFils, reservedFils] = await Promise.all([
+    readWalletFils(userId),
+    readReservedWalletFils(userId),
+  ]);
+  const availableFils = Math.max(0, balanceFils - reservedFils);
+  if (payment === "wallet" && availableFils < totalFils) throw new PaymentError("insufficientWallet");
+  const walletFils = payment === "wallet" ? totalFils : payment === "both" ? Math.min(availableFils, totalFils) : 0;
+  const issuedAt = Date.now();
+  const quoteToken = signPriceQuote({ userId, productId, shares, payment, unitPriceFils, walletFils, issuedAt });
+  return {
+    quoteToken,
+    quote: {
+      shares,
+      unitPrice: filsToKwd(unitPriceFils),
+      subtotal: filsToKwd(subtotalFils),
+      fee: filsToKwd(SERVICE_FEE_FILS),
+      wallet: filsToKwd(walletFils),
+      card: filsToKwd(totalFils - walletFils),
+      total: filsToKwd(totalFils),
+      lockedAt: new Date(issuedAt).toISOString(),
+      lockExpiresAt: new Date(issuedAt + PRICE_LOCK_MS).toISOString(),
+    },
+  };
+}
+
 async function saveStripeSession(
   orderId: Types.ObjectId,
   user: { id: string; email: string },
@@ -215,6 +259,7 @@ async function saveStripeSession(
   const order = await Order.findById(orderId).select("type").lean();
   if (!order) throw new PaymentError("checkoutUnavailable", 500);
   const kind = order.type === "topup" ? "Wallet top-up" : "Gift purchase";
+  const cancelKind = order.type === "topup" ? "&kind=topup" : "";
   let checkoutSession: Awaited<ReturnType<typeof stripe.checkout.sessions.create>> | null = null;
   try {
     checkoutSession = await stripe.checkout.sessions.create({
@@ -232,7 +277,7 @@ async function saveStripeSession(
       metadata: { orderId: String(orderId), userId: user.id },
       payment_intent_data: { metadata: { orderId: String(orderId), userId: user.id } },
       success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/checkout/cancel?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/checkout/cancel?session_id={CHECKOUT_SESSION_ID}${cancelKind}`,
       expires_at: expiresAt,
       locale: "auto",
     }, { idempotencyKey: `sahmi-checkout-${orderId}` });
@@ -289,17 +334,22 @@ export async function startTopupCheckout(user: { id: string; email: string }, am
 
 export async function startGiftCheckout(user: { id: string; email: string }, input: unknown, origin: string) {
   const gift = getGiftInput(input);
+  const priceQuote = verifyPriceQuote(gift.quoteToken, {
+    userId: user.id, productId: gift.productId, shares: gift.shares, payment: gift.payment,
+  });
+  if (!priceQuote) throw new PaymentError("priceQuoteExpired", 409);
   getStripeClient();
   if (!process.env.CODE_SECRET) throw new PaymentError("checkoutUnavailable", 503);
-  const { product, unitPriceFils } = await getActiveProduct(gift.productId);
+  const { product } = await getActiveProduct(gift.productId);
+  const unitPriceFils = priceQuote.unitPriceFils;
   const subtotalFils = unitPriceFils * gift.shares;
   const totalFils = subtotalFils + SERVICE_FEE_FILS;
   if (!Number.isSafeInteger(totalFils) || totalFils > MAX_STRIPE_AMOUNT_FILS) throw new PaymentError("invalidAmount");
 
   const orderId = new Types.ObjectId();
-  const startedAt = new Date();
-  const reservationExpiresAt = new Date(startedAt.getTime() + CHECKOUT_RESERVATION_SECONDS * 1000);
-  const priceLockExpiresAt = new Date(startedAt.getTime() + PRICE_LOCK_MS);
+  const startedAt = new Date(priceQuote.issuedAt);
+  const reservationExpiresAt = new Date(Date.now() + CHECKOUT_RESERVATION_SECONDS * 1000);
+  const priceLockExpiresAt = new Date(priceQuote.expiresAt);
   const computed = await inMongoTransaction(async session => {
     await lockWallet(user.id, session);
     const balanceFils = await readWalletFils(user.id, session);
@@ -311,6 +361,7 @@ export async function startGiftCheckout(user: { id: string; email: string }, inp
       : gift.payment === "both"
         ? Math.min(availableFils, totalFils)
         : 0;
+    if (walletFils !== priceQuote.walletFils) throw new PaymentError("walletBalanceChanged", 409);
     const cardFils = totalFils - walletFils;
     if (cardFils && cardFils % 10 !== 0) throw new PaymentError("invalidAmount");
 
@@ -351,14 +402,14 @@ export async function startGiftCheckout(user: { id: string; email: string }, inp
     user,
     computed.cardFils,
     origin,
-    `Gift shares from ${String(product.name)} for ${gift.recipientName}. The service fee is included.`,
+    `Gift shares from ${String(product.name)}; the service fee is included.`,
   );
   return {
     orderId: String(computed.orderId),
     url: checkout.url,
     quote: {
       shares: gift.shares,
-      unitPrice: Number(product.price),
+      unitPrice: filsToKwd(unitPriceFils),
       subtotal: filsToKwd(subtotalFils),
       fee: filsToKwd(SERVICE_FEE_FILS),
       wallet: filsToKwd(totalFils - computed.cardFils),

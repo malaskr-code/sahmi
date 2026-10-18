@@ -1,3 +1,4 @@
 - [Sahmi presentation](sahmi-presentation.md) — keep demo/test-money labels out of visible copy without expanding the financial functionality.
 - [Stock API quota](stock-api-quota.md) — the small oanor allowance requires batched, infrequent server-side refreshes, including failure cooldowns.
 - [Preview session cookies](session-cookies.md) — secure cross-site session cookies need `SameSite=None` for embedded Replit previews.
+- [Wallet ledger invariants](wallet-ledger.md) — derive wallet balance from transaction entries; reserve funds for pending gift checkouts and finalize atomically.

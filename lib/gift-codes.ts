@@ -1,6 +1,8 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from "node:crypto";
 
 const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+let cachedSecret: string | null = null;
+let cachedKey: Buffer | null = null;
 
 export function normalizeGiftCode(code: string) {
   return code.trim().toUpperCase().replace(/[\s-]+/g, "");
@@ -12,15 +14,19 @@ export function hashGiftCode(code: string) {
 
 export function createGiftCode(ticker: string) {
   const prefix = ticker.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5) || "SAHMI";
-  const bytes = randomBytes(8);
+  const bytes = randomBytes(16);
   const token = Array.from(bytes, byte => alphabet[byte % alphabet.length]).join("");
-  return `${prefix}-${token.slice(0, 4)}-${token.slice(4)}`;
+  return `${prefix}-${token.match(/.{1,4}/g)!.join("-")}`;
 }
 
 function encryptionKey() {
   const secret = process.env.CODE_SECRET;
   if (!secret) throw new Error("CODE_SECRET is missing.");
-  return scryptSync(secret, "sahmi-gift-code-v1", 32);
+  if (!cachedKey || cachedSecret !== secret) {
+    cachedKey = scryptSync(secret, "sahmi-gift-code-v1", 32);
+    cachedSecret = secret;
+  }
+  return cachedKey;
 }
 
 export function encryptGiftCode(code: string) {

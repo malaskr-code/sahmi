@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth";
-import { AccountEmpty } from "@/components/AccountEmpty";
+import CheckoutClient from "@/components/commerce/CheckoutClient";
 
 export default async function CheckoutPage() {
   await requireUser("/checkout");
-  return <AccountEmpty kind="checkout" />;
+  return <CheckoutClient />;
 }

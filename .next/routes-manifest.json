@@ -23,6 +23,14 @@
   },
   "dynamicRoutes": [
     {
+      "page": "/api/gifts/redeem/[code]",
+      "regex": "^/api/gifts/redeem/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPcode": "nxtPcode"
+      },
+      "namedRegex": "^/api/gifts/redeem/(?<nxtPcode>[^/]+?)(?:/)?$"
+    },
+    {
       "page": "/api/products/[id]",
       "regex": "^/api/products/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -37,6 +45,14 @@
         "nxtPid": "nxtPid"
       },
       "namedRegex": "^/products/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/redeem/[code]",
+      "regex": "^/redeem/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPcode": "nxtPcode"
+      },
+      "namedRegex": "^/redeem/(?<nxtPcode>[^/]+?)(?:/)?$"
     }
   ],
   "staticRoutes": [
@@ -101,10 +117,46 @@
       "namedRegex": "^/api/auth/signup(?:/)?$"
     },
     {
+      "page": "/api/checkout",
+      "regex": "^/api/checkout(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/checkout(?:/)?$"
+    },
+    {
+      "page": "/api/checkout/cancel",
+      "regex": "^/api/checkout/cancel(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/checkout/cancel(?:/)?$"
+    },
+    {
+      "page": "/api/checkout/complete",
+      "regex": "^/api/checkout/complete(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/checkout/complete(?:/)?$"
+    },
+    {
+      "page": "/api/gifts",
+      "regex": "^/api/gifts(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/gifts(?:/)?$"
+    },
+    {
+      "page": "/api/gifts/redeem",
+      "regex": "^/api/gifts/redeem(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/gifts/redeem(?:/)?$"
+    },
+    {
       "page": "/api/products",
       "regex": "^/api/products(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/api/products(?:/)?$"
+    },
+    {
+      "page": "/api/wallet",
+      "regex": "^/api/wallet(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api/wallet(?:/)?$"
     },
     {
       "page": "/cart",
@@ -117,6 +169,18 @@
       "regex": "^/checkout(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/checkout(?:/)?$"
+    },
+    {
+      "page": "/checkout/cancel",
+      "regex": "^/checkout/cancel(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/checkout/cancel(?:/)?$"
+    },
+    {
+      "page": "/checkout/success",
+      "regex": "^/checkout/success(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/checkout/success(?:/)?$"
     },
     {
       "page": "/gifts",

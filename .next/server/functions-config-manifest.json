@@ -31,7 +31,14 @@
     "/api/auth/logout": {},
     "/api/auth/me": {},
     "/api/auth/signup": {},
+    "/api/checkout": {},
+    "/api/checkout/cancel": {},
+    "/api/checkout/complete": {},
+    "/api/gifts": {},
+    "/api/gifts/redeem": {},
+    "/api/gifts/redeem/[code]": {},
     "/api/products": {},
-    "/api/products/[id]": {}
+    "/api/products/[id]": {},
+    "/api/wallet": {}
   }
 }

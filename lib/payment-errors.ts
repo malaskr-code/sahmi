@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 
 export type PaymentErrorCode =
   | "invalidRequest"
+  | "unauthorized"
   | "invalidAmount"
   | "minimumTopup"
+  | "priceQuoteExpired"
+  | "walletBalanceChanged"
   | "invalidGift"
   | "insufficientWallet"
   | "productUnavailable"
@@ -23,8 +26,11 @@ export class PaymentError extends Error {
 const messages: Record<"en" | "ar", Record<PaymentErrorCode, string>> = {
   en: {
     invalidRequest: "The request is invalid. Please check the details and try again.",
+    unauthorized: "Please log in to continue.",
     invalidAmount: "Enter a valid amount in KWD, in increments of 0.010 KWD.",
     minimumTopup: "The minimum wallet top-up is 1.000 KWD.",
+    priceQuoteExpired: "The 10-minute price hold expired. Refresh the company price before paying.",
+    walletBalanceChanged: "Your available wallet balance changed. Refresh the payment breakdown before continuing.",
     invalidGift: "Please check the recipient, message, share count, and card theme.",
     insufficientWallet: "Your available wallet balance is not enough for this gift.",
     productUnavailable: "That company is no longer available. Refresh the store and try again.",
@@ -36,8 +42,11 @@ const messages: Record<"en" | "ar", Record<PaymentErrorCode, string>> = {
   },
   ar: {
     invalidRequest: "الطلب غير صالح. تحقق من البيانات وحاول مرة أخرى.",
+    unauthorized: "يرجى تسجيل الدخول للمتابعة.",
     invalidAmount: "أدخل مبلغاً صحيحاً بالدينار، بزيادات قدرها 0.010 د.ك.",
     minimumTopup: "الحد الأدنى لشحن المحفظة هو 1.000 د.ك.",
+    priceQuoteExpired: "انتهت مهلة تثبيت السعر (10 دقائق). حدّث سعر الشركة قبل الدفع.",
+    walletBalanceChanged: "تغيّر رصيد المحفظة المتاح. حدّث تفاصيل الدفع قبل المتابعة.",
     invalidGift: "تحقق من اسم المستلم والرسالة وعدد الأسهم وتصميم البطاقة.",
     insufficientWallet: "الرصيد المتاح في محفظتك لا يكفي لهذه الهدية.",
     productUnavailable: "هذه الشركة غير متاحة الآن. حدّث المتجر وحاول مرة أخرى.",
