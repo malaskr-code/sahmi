@@ -1,0 +1,42 @@
+Read the skills before starting. This is steps 9 to 11: the wallet, Stripe payments, and gift creation for Sahmi. Do not change anything else. Everything must work in English and Arabic (RTL), light and dark mode, and on mobile.
+
+NEW MODELS
+- Transaction: user, type (topup/gift_payment/sale/fee), amount (positive for money in, negative for money out), reference, createdAt
+- Gift: order, buyer, product, shares, priceAtPurchase, occasion, message, recipientName, codeHash, codeEncrypted, status (active/redeemed), redeemedBy, redeemedAt, createdAt
+- Notification: user, text, read, createdAt
+
+WALLET
+- Never store a balance. Balance = sum of the user's Transaction amounts, calculated on the server.
+- Wallet page: large balance in KWD (3 decimals), "Top up" button, and full transaction history (date, type, amount, reference) with a filter by type.
+- Top up: quick amounts 5, 10, 20, 50 KWD or custom, minimum 1.000 KWD. Paid through Stripe.
+
+STEP 9: STRIPE CHECKOUT (test mode, secret STRIPE_SECRET_KEY)
+- app/api/checkout creates Stripe Checkout Sessions on the server only.
+- The server builds the amount from database prices and ignores any price sent by the browser.
+- Currency "kwd". KWD has three decimals, so unit_amount is in fils (KWD × 1000) and every amount must end in 0.
+- success_url and cancel_url use the request origin; success_url includes {CHECKOUT_SESSION_ID}.
+- Used for two things: wallet top-ups, and the card part of a gift payment.
+- Gift checkout (from the Cart): recipient name and personal message → payment.
+  - The card theme already chosen in the cart is used.
+  - Price locks for 10 minutes; after that, refresh it from the database.
+  - Payment options: wallet, card, or both (wallet first, card for the rest). Show the breakdown: shares × price, 0.250 KWD fee, from wallet, by card.
+  - If the wallet covers everything, skip Stripe and complete the order directly.
+- Save the Order as "pending" with the session id before redirecting.
+
+STEP 10: SUCCESS AND CANCEL PAGES
+- The success page sends the session_id to the server, which retrieves the session from Stripe and only accepts payment_status "paid". Never trust the redirect alone.
+- On success, in ONE MongoDB transaction: mark the Order paid, add the Transaction rows, and either create the Gift (gift orders) or credit the wallet (top-ups). If the same session id was already processed, do nothing.
+- Add a notification when a top-up succeeds.
+- Cancel page: "Payment cancelled. Your cart is saved." with a retry button.
+
+GIFT CODE AND DELIVERY
+- Codes from crypto.randomBytes in a readable format like ZAIN-7K2P-9QXM.
+- Store a hash for lookups plus an AES-encrypted copy (key from CODE_SECRET) so the buyer can reshare it. Codes never expire. Gifts are final.
+- After payment, show the gift card in the chosen theme with: copy link, WhatsApp share (wa.me link with a prefilled message and the redeem link /redeem/[code]), and a QR code of the redeem link (qrcode library).
+- "Download card" saves the card with its QR code as a PNG, ready to print.
+- My Gifts page: company, shares, recipient, theme, value at purchase, current value, status, reshare buttons.
+
+STEP 11 (BONUS): STRIPE WEBHOOK
+- app/api/webhook verifies the signature with STRIPE_WEBHOOK_SECRET and marks the order paid on checkout.session.completed, using the same function as the success page so nothing is processed twice. If STRIPE_WEBHOOK_SECRET is missing, skip this step and tell me.
+
+After each step, tell me what you changed and how to test it, in 2 to 3 plain sentences.
