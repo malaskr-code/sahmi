@@ -11,7 +11,7 @@ import { getProduct } from "@/lib/products";
 import { CardThemePreview } from "@/components/CardThemePreview";
 import { useCommerce, PageIntro, LoadingPanel, ErrorPanel, responseError } from "./shared";
 
-type Mode = "wallet" | "card" | "both";
+type Mode = "wallet" | "card" | "both" | "demo";
 type Quote = { shares: number; unitPrice: number; subtotal: number; fee: number; wallet: number; card: number; total: number; lockedAt: string; lockExpiresAt: string };
 
 export default function CheckoutClient() {
@@ -158,8 +158,8 @@ export default function CheckoutClient() {
         <section className="card p-5 sm:p-7">
           <h2 className="font-display text-2xl font-semibold">{copy.checkout.payment}</h2>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{copy.checkout.paymentHelp}</p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            {(["both", "wallet", "card"] as Mode[]).map(mode => <label key={mode} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${payment === mode ? "border-[var(--gold-dark)] bg-[var(--gold)]/10" : "border-[var(--line)] hover:bg-[var(--soft)]"}`}><input type="radio" name="payment" value={mode} checked={payment === mode} onChange={() => { setQuote(null); setQuoteToken(""); setPayment(mode); }} className="mt-1 accent-[var(--gold-dark)]"/><span className="min-w-0"><span className="flex items-center gap-2 font-semibold">{mode === "card" ? <CreditCard size={15}/> : <WalletCards size={15}/>}<span>{copy.checkout[mode]}</span></span><span className="mt-1 block text-[11px] leading-5 text-[var(--muted)]">{mode === "both" ? copy.checkout.fromWallet : mode === "wallet" ? copy.wallet.available : copy.checkout.byCard}</span></span></label>)}
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {(["both", "wallet", "card", "demo"] as Mode[]).map(mode => <label key={mode} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${payment === mode ? "border-[var(--gold-dark)] bg-[var(--gold)]/10" : "border-[var(--line)] hover:bg-[var(--soft)]"}`}><input type="radio" name="payment" value={mode} checked={payment === mode} onChange={() => { setQuote(null); setQuoteToken(""); setPayment(mode); }} className="mt-1 accent-[var(--gold-dark)]"/><span className="min-w-0"><span className="flex items-center gap-2 font-semibold">{mode === "card" ? <CreditCard size={15}/> : <WalletCards size={15}/>}<span>{mode === "demo" ? copy.checkout.generateCode : copy.checkout[mode]}</span></span><span className="mt-1 block text-[11px] leading-5 text-[var(--muted)]">{mode === "demo" ? copy.checkout.generateCodeNote : mode === "both" ? copy.checkout.fromWallet : mode === "wallet" ? copy.wallet.available : copy.checkout.byCard}</span></span></label>)}
           </div>
         </section>
       </div>
@@ -178,7 +178,7 @@ export default function CheckoutClient() {
         {quoteError && <p className="mt-4 text-sm text-[var(--red)]" role="alert">{quoteError}</p>}
         <button type="button" onClick={refreshPriceAndQuote} disabled={refreshingPrice || quoting} className="mt-4 w-full text-xs font-semibold text-[var(--gold-dark)] underline underline-offset-4 disabled:opacity-50">{copy.checkout.reloadProduct}</button>
         {submitError && <p className="mt-4 text-sm leading-6 text-[var(--red)]" role="alert">{submitError}</p>}
-        <button type="submit" disabled={pending || quoting || refreshingPrice || !quoteToken} className="gold-button mt-5 w-full disabled:cursor-wait disabled:opacity-55">{pending ? copy.checkout.paying : quote && quote.card === 0 ? copy.checkout.walletPay : copy.checkout.pay}<ArrowRight size={16}/></button>
+        <button type="submit" disabled={pending || quoting || refreshingPrice || !quoteToken} className="gold-button mt-5 w-full disabled:cursor-wait disabled:opacity-55">{pending ? copy.checkout.paying : payment === "demo" ? copy.checkout.generateGiftCode : quote && quote.card === 0 ? copy.checkout.walletPay : copy.checkout.pay}<ArrowRight size={16}/></button>
         <p className="mt-3 text-center text-[10px] leading-5 text-[var(--muted)]">{copy.checkout.feeNote}</p>
       </aside>
     </form>

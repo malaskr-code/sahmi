@@ -17,8 +17,8 @@ const palettes: Record<GiftRecord["theme"], { background: string; ink: string; a
   general: { background: "#f2eddf", ink: "#625537", accent: "#c9a227" },
 };
 
-export function GiftDeliveryCard({ gift }: { gift: ShareableGift }) {
-  const { copy, lang } = useCommerce();
+export function GiftDeliveryCard({ gift, actions = true }: { gift: ShareableGift; actions?: boolean }) {
+  const { copy, lang, currency } = useCommerce();
   const [origin, setOrigin] = useState("");
   const [qr, setQr] = useState("");
   const [copied, setCopied] = useState(false);
@@ -41,7 +41,8 @@ export function GiftDeliveryCard({ gift }: { gift: ShareableGift }) {
   async function copyLink() {
     setError("");
     try {
-      await navigator.clipboard.writeText(link);
+      const redeemLink = link || `${window.location.origin}/redeem/${encodeURIComponent(gift.code)}`;
+      await navigator.clipboard.writeText(redeemLink);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2200);
     } catch {
@@ -50,12 +51,28 @@ export function GiftDeliveryCard({ gift }: { gift: ShareableGift }) {
   }
 
   function shareWhatsApp() {
-    const text = `${copy.gifts.title}: ${link}`;
+    const redeemLink = link || `${window.location.origin}/redeem/${encodeURIComponent(gift.code)}`;
+    const text = `${copy.gifts.shareMessage} ${redeemLink}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   }
 
   async function downloadCard() {
     setError("");
+    const redeemLink = link || `${window.location.origin}/redeem/${encodeURIComponent(gift.code)}`;
+    let qrImageData = qr;
+    if (!qrImageData) {
+      try {
+        qrImageData = await QRCode.toDataURL(redeemLink, {
+          width: 200,
+          margin: 1,
+          color: { dark: "#183b38", light: "#ffffff" },
+          errorCorrectionLevel: "M",
+        });
+      } catch {
+        setError(copy.errors.serverError);
+        return;
+      }
+    }
     const canvas = document.createElement("canvas");
     canvas.width = 1200;
     canvas.height = 760;
@@ -79,15 +96,19 @@ export function GiftDeliveryCard({ gift }: { gift: ShareableGift }) {
     context.fillText(companyName, textX, 220, 740);
     context.font = "500 34px sans-serif";
     context.fillText(`${gift.shares} ${copy.gifts.shares}`, textX, 292);
+    context.font = "500 25px sans-serif";
+    context.fillText(`${copy.gifts.purchaseValue}: ${currency(gift.priceAtPurchase)}`, textX, 344, 740);
     context.font = "600 28px sans-serif";
-    context.fillText(`${copy.gifts.recipient}: ${gift.recipientName}`, textX, 398, 740);
+    context.fillText(`${copy.gifts.recipient}: ${gift.recipientName}`, textX, 410, 740);
     if (gift.message) {
       context.font = "italic 24px sans-serif";
-      context.fillText(gift.message.slice(0, 100), textX, 462, 740);
+      context.fillText(gift.message.slice(0, 100), textX, 474, 740);
     }
-    if (qr) {
+    context.font = "600 22px monospace";
+    context.fillText(`${copy.gifts.code}: ${gift.code}`, textX, 682, 740);
+    if (qrImageData) {
       const image = new Image();
-      image.src = qr;
+      image.src = qrImageData;
       await new Promise<void>(resolve => {
         image.onload = () => resolve();
         image.onerror = () => resolve();
@@ -104,33 +125,40 @@ export function GiftDeliveryCard({ gift }: { gift: ShareableGift }) {
     anchor.click();
   }
 
-  return <section className="mt-8 rounded-2xl border border-[var(--line)] bg-[var(--cream)] p-4 text-start sm:p-6" aria-label={copy.success.giftTitle}>
-    <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_132px]">
-      <article className="relative overflow-hidden rounded-2xl p-6 sm:p-8" style={{ backgroundColor: theme.background, color: theme.ink }}>
+  return <section className="text-start" aria-label={copy.success.giftTitle}>
+      <article className="relative overflow-hidden rounded-2xl p-5 sm:p-7" style={{ backgroundColor: theme.background, color: theme.ink }}>
         <span aria-hidden="true" className="pointer-events-none absolute -end-12 -top-16 h-52 w-52 rounded-full border opacity-40" style={{ borderColor: theme.accent }}/>
         <p className="relative text-[10px] font-bold uppercase tracking-[.2em] opacity-70">{copy.brandMark}</p>
-        <h2 className="font-display relative mt-7 text-3xl font-semibold">{companyName}</h2>
-        <p className="relative mt-1 text-xs tracking-widest opacity-70">{gift.company.ticker}</p>
-        <div className="relative mt-7 flex items-end justify-between gap-4 border-t border-current/15 pt-4">
-          <div><p className="text-[10px] uppercase tracking-widest opacity-65">{copy.gifts.recipient}</p><p className="mt-1 font-semibold">{gift.recipientName}</p></div>
-          <div className="text-end"><p className="font-display text-3xl font-semibold">{gift.shares}</p><p className="text-[10px] opacity-70">{copy.gifts.shares}</p></div>
+        <div className="relative mt-5 grid items-start gap-5 sm:grid-cols-[minmax(0,1fr)_124px]">
+          <div className="min-w-0">
+            <h2 className="font-display text-2xl font-semibold leading-tight sm:text-3xl">{companyName}</h2>
+            <p dir="ltr" className="mt-1 text-xs tracking-widest opacity-70">{gift.company.ticker}</p>
+            <div className="mt-5 flex flex-wrap items-end gap-x-7 gap-y-3 border-t border-current/15 pt-4">
+              <div><p className="text-[10px] uppercase tracking-widest opacity-65">{copy.gifts.shares}</p><p className="font-display mt-1 text-2xl font-semibold">{gift.shares}</p></div>
+              <div><p className="text-[10px] uppercase tracking-widest opacity-65">{copy.gifts.purchaseValue}</p><p className="mt-1 font-semibold">{currency(gift.priceAtPurchase)}</p></div>
+            </div>
+            <div className="mt-4">
+              <p className="text-[10px] uppercase tracking-widest opacity-65">{copy.gifts.recipient}</p>
+              <p className="mt-1 font-semibold">{gift.recipientName}</p>
+            </div>
+            {gift.message && <p className="mt-4 border-s-2 border-current/25 ps-3 text-sm leading-6 opacity-85">{gift.message}</p>}
+            <div className="mt-4 border-t border-current/15 pt-3">
+              <p className="text-[10px] uppercase tracking-widest opacity-65">{copy.gifts.code}</p>
+              <p dir="ltr" className="mt-1 break-all font-mono text-sm font-bold tracking-[.12em]">{gift.code}</p>
+            </div>
+          </div>
+          <div className="flex w-full items-center gap-3 rounded-xl bg-white p-2.5 text-[#183b38] sm:w-auto sm:flex-col">
+            {qr ? <img src={qr} alt={copy.gifts.qr} className="aspect-square w-20 sm:w-full" /> : <div className="aspect-square w-20 animate-pulse rounded-lg bg-[var(--soft)] sm:w-full" aria-label={copy.success.verifying}/>}
+            <span className="text-xs leading-5 sm:text-center sm:text-[10px]">{copy.gifts.qr}</span>
+          </div>
         </div>
-        {gift.message && <p className="relative mt-5 text-sm leading-6 opacity-85">{gift.message}</p>}
       </article>
-      <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-white p-3">
-        {qr ? <img src={qr} alt={copy.gifts.qr} className="aspect-square w-full max-w-32" /> : <div className="aspect-square w-full max-w-32 animate-pulse rounded-lg bg-[var(--soft)]" aria-label={copy.success.verifying}/>}
-        <span className="text-center text-[10px] leading-4 text-[#183b38]">{copy.gifts.qr}</span>
-      </div>
-    </div>
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-[var(--paper)] px-4 py-3">
-      <div><p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted)]">{copy.gifts.code}</p><p dir="ltr" className="mt-1 font-mono text-sm font-bold tracking-[.12em]">{gift.code}</p></div>
-      <span className="max-w-full break-all text-xs text-[var(--muted)]">{link.replace(/^https?:\/\//, "")}</span>
-    </div>
+    {link && <p className="mt-3 break-all text-[10px] leading-5 text-[var(--muted)]">{link.replace(/^https?:\/\//, "")}</p>}
     {error && <p className="mt-3 text-sm text-[var(--red)]" role="alert">{error}</p>}
-    <div className="mt-4 grid gap-2 sm:grid-cols-3">
+    {actions && <div className="mt-4 grid gap-2 sm:grid-cols-3">
       <button type="button" onClick={() => void copyLink()} className="outline-button !px-2 !py-3 text-xs">{copied ? <Check size={15}/> : <Copy size={15}/ >}{copied ? copy.gifts.copied : copy.gifts.copy}</button>
       <button type="button" onClick={shareWhatsApp} className="outline-button !px-2 !py-3 text-xs"><Share2 size={15}/>{copy.gifts.share}</button>
       <button type="button" onClick={() => void downloadCard()} className="outline-button !px-2 !py-3 text-xs"><Download size={15}/>{copy.gifts.download}</button>
-    </div>
+    </div>}
   </section>;
 }

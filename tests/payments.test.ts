@@ -80,3 +80,33 @@ test("gift price quotes are signed to the user and expire after ten minutes", ()
     delete process.env.JWT_SECRET;
   }
 });
+
+test("demo gift quotes are signed, expire normally, and reserve neither wallet nor card funds", () => {
+  process.env.JWT_SECRET = "unit-test-quote-signing-secret";
+  try {
+    const issuedAt = Date.now();
+    const input = {
+      userId: "user-123",
+      productId: "zain",
+      shares: 2,
+      payment: "demo" as const,
+      unitPriceFils: 813,
+      walletFils: 0,
+      cardChargeUsdCents: 0,
+      issuedAt,
+    };
+    const token = signPriceQuote(input);
+    const expected = { userId: "user-123", productId: "zain", shares: 2, payment: "demo" as const };
+    assert.deepEqual(verifyPriceQuote(token, expected, issuedAt + 599_999), {
+      unitPriceFils: 813,
+      walletFils: 0,
+      cardChargeUsdCents: 0,
+      issuedAt,
+      expiresAt: issuedAt + 600_000,
+    });
+    assert.equal(verifyPriceQuote(token, expected, issuedAt + 600_000), null);
+    assert.equal(verifyPriceQuote(token, { ...expected, payment: "card" }, issuedAt + 1000), null);
+  } finally {
+    delete process.env.JWT_SECRET;
+  }
+});

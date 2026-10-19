@@ -44,7 +44,10 @@ export function SuccessClient({ sessionId, orderId }: { sessionId: string; order
 
   useEffect(() => { void verify(); }, [verify, attempt]);
 
-  if (checking) return <main className="page-shell min-h-[65vh] py-12 md:py-16"><LoadingPanel text={copy.success.verifying}/><p className="mx-auto mt-4 max-w-xl text-center text-sm text-[var(--muted)]">{copy.success.verifying}</p></main>;
+  if (checking) {
+    const verificationText = sessionId ? copy.success.verifying : copy.success.verifyingGift;
+    return <main className="page-shell min-h-[65vh] py-12 md:py-16"><LoadingPanel text={verificationText}/><p className="mx-auto mt-4 max-w-xl text-center text-sm text-[var(--muted)]">{verificationText}</p></main>;
+  }
 
   return <main className="page-shell flex min-h-[65vh] items-center justify-center py-12 md:py-16">
     <section className="card w-full max-w-2xl overflow-hidden">

@@ -8,7 +8,7 @@ type QuotePayload = {
   userId: string;
   productId: string;
   shares: number;
-  payment: "wallet" | "card" | "both";
+  payment: "wallet" | "card" | "both" | "demo";
   unitPriceFils: number;
   walletFils: number;
   cardChargeUsdCents: number;
@@ -33,7 +33,7 @@ export function signPriceQuote(input: Omit<QuotePayload, "version">) {
 
 export function verifyPriceQuote(
   token: unknown,
-  expected: { userId: string; productId: string; shares: number; payment: "wallet" | "card" | "both" },
+  expected: { userId: string; productId: string; shares: number; payment: "wallet" | "card" | "both" | "demo" },
   now = Date.now(),
 ) {
   if (typeof token !== "string" || token.length > 2048) return null;
@@ -81,6 +81,6 @@ export function verifyPriceQuote(
 export type GiftPriceQuote = {
   productId: string;
   shares: number;
-  payment: "wallet" | "card" | "both";
+  payment: "wallet" | "card" | "both" | "demo";
   theme?: CardThemeId;
 };
