@@ -4,6 +4,7 @@ import {
   KWD_FILS_PER_UNIT,
   SERVICE_FEE_FILS,
   filsToKwd,
+  kwdFilsToUsdCents,
   kwdToFils,
   parseTopupFils,
 } from "../lib/money";
@@ -15,6 +16,10 @@ test("KWD amounts use fils and enforce Stripe's 10-fils increment", () => {
   assert.equal(SERVICE_FEE_FILS, 250);
   assert.equal(kwdToFils(5), 5000);
   assert.equal(kwdToFils(0.01), 10);
+  assert.equal(kwdFilsToUsdCents(1000), 325);
+  assert.equal(kwdFilsToUsdCents(10), 3);
+  assert.equal(kwdFilsToUsdCents(250), 81);
+  assert.equal(kwdFilsToUsdCents(4000), 1300);
   assert.equal(filsToKwd(250), 0.25);
   assert.equal(parseTopupFils(1), 1000);
   assert.equal(parseTopupFils(5), 5000);
@@ -50,6 +55,7 @@ test("gift price quotes are signed to the user and expire after ten minutes", ()
       payment: "both" as const,
       unitPriceFils: 1250,
       walletFils: 1500,
+      cardChargeUsdCents: 813,
       issuedAt,
     };
     const token = signPriceQuote(input);
@@ -57,6 +63,7 @@ test("gift price quotes are signed to the user and expire after ten minutes", ()
     assert.deepEqual(verifyPriceQuote(token, expected, issuedAt + 599_999), {
       unitPriceFils: 1250,
       walletFils: 1500,
+      cardChargeUsdCents: 813,
       issuedAt,
       expiresAt: issuedAt + 600_000,
     });

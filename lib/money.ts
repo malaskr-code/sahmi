@@ -2,6 +2,12 @@ export const KWD_FILS_PER_UNIT = 1000;
 export const STRIPE_AMOUNT_INCREMENT_FILS = 10;
 export const SERVICE_FEE_FILS = 250;
 export const MIN_TOPUP_FILS = 1000;
+export const USD_CENTS_PER_KWD = 325;
+
+export function kwdFilsToUsdCents(fils: number): number {
+  if (!Number.isSafeInteger(fils) || fils < 0) throw new Error("Invalid KWD amount.");
+  return Math.round((fils * USD_CENTS_PER_KWD) / KWD_FILS_PER_UNIT);
+}
 
 export function kwdToFils(value: number): number {
   if (!Number.isFinite(value) || value < 0) throw new Error("Invalid KWD amount.");

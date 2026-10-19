@@ -6,7 +6,7 @@ import Product from "@/models/Product";
 import Transaction from "@/models/Transaction";
 import User from "@/models/User";
 import { CARD_THEME_IDS, type CardThemeId } from "@/data/cardThemes";
-import { SERVICE_FEE_FILS, filsToKwd, kwdToFils, parseTopupFils } from "@/lib/money";
+import { SERVICE_FEE_FILS, filsToKwd, kwdFilsToUsdCents, kwdToFils, parseTopupFils, USD_CENTS_PER_KWD } from "@/lib/money";
 import { createGiftCode, encryptGiftCode, hashGiftCode } from "@/lib/gift-codes";
 import { getStripeClient } from "@/lib/stripe";
 import { readReservedWalletFils, readWalletFils } from "@/lib/wallet";
@@ -126,7 +126,7 @@ async function createGiftForOrder(order: {
 async function finalizePendingOrder(
   orderId: Types.ObjectId,
   session: ClientSession,
-  options: { cardPaymentAmountFils?: number } = {},
+  options: { cardChargeUsdCents?: number } = {},
 ) {
   const order = await Order.findOne({ _id: orderId, status: "pending" }).session(session);
   if (!order) return null;
@@ -134,9 +134,14 @@ async function finalizePendingOrder(
   await lockWallet(String(order.user), session);
 
   if (order.type === "topup") {
-    const cardFils = options.cardPaymentAmountFils;
+    const cardChargeUsdCents = options.cardChargeUsdCents;
     const topupFils = sumKwdFils(order.total);
-    if (cardFils !== topupFils) throw new Error("Top-up amount does not match the paid order.");
+    const expectedUsdCents = order.paidByCardUsdCents ?? kwdFilsToUsdCents(topupFils);
+    if (
+      sumKwdFils(order.paidByCard) !== topupFils ||
+      expectedUsdCents !== kwdFilsToUsdCents(topupFils) ||
+      cardChargeUsdCents !== expectedUsdCents
+    ) throw new Error("Top-up amount does not match the paid order.");
     await Transaction.create([{
       user: order.user,
       order: order._id,
@@ -162,8 +167,10 @@ async function finalizePendingOrder(
   const feeFils = sumKwdFils(order.fee);
   const totalFils = subtotalFils + feeFils;
   const expectedCardFils = sumKwdFils(order.paidByCard);
+  const expectedUsdCents = order.paidByCardUsdCents ?? kwdFilsToUsdCents(expectedCardFils);
   if (
-    expectedCardFils !== (options.cardPaymentAmountFils ?? 0) ||
+    (expectedCardFils === 0 ? options.cardChargeUsdCents !== undefined && options.cardChargeUsdCents !== 0 : options.cardChargeUsdCents !== expectedUsdCents) ||
+    expectedUsdCents !== kwdFilsToUsdCents(expectedCardFils) ||
     totalFils !== sumKwdFils(order.total) ||
     sumKwdFils(order.paidFromWallet) + expectedCardFils !== totalFils
   ) throw new Error("Gift payment amount does not match the pending order.");
@@ -211,8 +218,9 @@ export async function prepareGiftPriceQuote(userId: string, input: unknown) {
   const availableFils = Math.max(0, balanceFils - reservedFils);
   if (payment === "wallet" && availableFils < totalFils) throw new PaymentError("insufficientWallet");
   const walletFils = payment === "wallet" ? totalFils : payment === "both" ? Math.min(availableFils, totalFils) : 0;
+  const cardChargeUsdCents = kwdFilsToUsdCents(totalFils - walletFils);
   const issuedAt = Date.now();
-  const quoteToken = signPriceQuote({ userId, productId, shares, payment, unitPriceFils, walletFils, issuedAt });
+  const quoteToken = signPriceQuote({ userId, productId, shares, payment, unitPriceFils, walletFils, cardChargeUsdCents, issuedAt });
   return {
     quoteToken,
     quote: {
@@ -232,11 +240,11 @@ export async function prepareGiftPriceQuote(userId: string, input: unknown) {
 async function saveStripeSession(
   orderId: Types.ObjectId,
   user: { id: string; email: string },
-  amountFils: number,
+  amountUsdCents: number,
   origin: string,
   description: string,
 ) {
-  if (!Number.isSafeInteger(amountFils) || amountFils <= 0 || amountFils > MAX_STRIPE_AMOUNT_FILS || amountFils % 10 !== 0) {
+  if (!Number.isSafeInteger(amountUsdCents) || amountUsdCents < 50 || amountUsdCents > 99_999_999) {
     throw new PaymentError("invalidAmount");
   }
   const stripe = getStripeClient();
@@ -252,8 +260,8 @@ async function saveStripeSession(
       line_items: [{
         quantity: 1,
         price_data: {
-          currency: "kwd",
-          unit_amount: amountFils,
+          currency: "usd",
+          unit_amount: amountUsdCents,
           product_data: { name: kind, description },
         },
       }],
@@ -313,15 +321,16 @@ export async function startTopupCheckout(user: { id: string; email: string }, am
     total: filsToKwd(amountFils),
     paidFromWallet: 0,
     paidByCard: filsToKwd(amountFils),
+    paidByCardUsdCents: kwdFilsToUsdCents(amountFils),
     status: "pending",
     reservationExpiresAt: new Date(Date.now() + CHECKOUT_RESERVATION_SECONDS * 1000),
   });
   const checkout = await saveStripeSession(
     order._id,
     user,
-    amountFils,
+    kwdFilsToUsdCents(amountFils),
     origin,
-    `${filsToKwd(amountFils).toFixed(3)} KWD added to the Sahmi wallet after payment.`,
+    `${filsToKwd(amountFils).toFixed(3)} KWD added to the Sahmi wallet after payment. The Stripe charge uses the fixed rate of 1 KWD = ${USD_CENTS_PER_KWD / 100} USD.`,
   );
   return { orderId: String(order._id), ...checkout };
 }
@@ -337,6 +346,8 @@ export async function startGiftCheckout(user: { id: string; email: string }, inp
   const unitPriceFils = priceQuote.unitPriceFils;
   const subtotalFils = unitPriceFils * gift.shares;
   const totalFils = subtotalFils + SERVICE_FEE_FILS;
+  const cardFilsFromQuote = totalFils - priceQuote.walletFils;
+  if (kwdFilsToUsdCents(cardFilsFromQuote) !== priceQuote.cardChargeUsdCents) throw new PaymentError("priceQuoteExpired", 409);
   if (!Number.isSafeInteger(totalFils) || totalFils > MAX_STRIPE_AMOUNT_FILS) throw new PaymentError("invalidAmount");
 
   const orderId = new Types.ObjectId();
@@ -375,6 +386,7 @@ export async function startGiftCheckout(user: { id: string; email: string }, inp
       total: filsToKwd(totalFils),
       paidFromWallet: filsToKwd(walletFils),
       paidByCard: filsToKwd(cardFils),
+      paidByCardUsdCents: priceQuote.cardChargeUsdCents,
       priceLockedAt: startedAt,
       priceLockExpiresAt,
       reservationExpiresAt,
@@ -393,9 +405,9 @@ export async function startGiftCheckout(user: { id: string; email: string }, inp
   const checkout = await saveStripeSession(
     computed.orderId,
     user,
-    computed.cardFils,
+    priceQuote.cardChargeUsdCents,
     origin,
-    `Gift shares from ${String(product.name)}; the service fee is included.`,
+    `Gift shares from ${String(product.name)}; the service fee is included. The Stripe charge uses the fixed rate of 1 KWD = ${USD_CENTS_PER_KWD / 100} USD.`,
   );
   return {
     orderId: String(computed.orderId),
@@ -427,14 +439,14 @@ export async function completePaidStripeOrder(sessionId: string, userId: string)
     paidSession.mode !== "payment" ||
     paidSession.status !== "complete" ||
     paidSession.payment_status !== "paid" ||
-    paidSession.currency?.toLowerCase() !== "kwd" ||
+    paidSession.currency?.toLowerCase() !== "usd" ||
     paidSession.client_reference_id !== String(existing._id) ||
     paidSession.metadata?.orderId !== String(existing._id) ||
     paidSession.metadata?.userId !== userId
   ) throw new PaymentError("sessionPending", 409);
 
-  const order = await Order.findById(existing._id).select("paidByCard total type").lean();
-  if (!order || paidSession.amount_total !== sumKwdFils(order.type === "topup" ? order.total : order.paidByCard)) {
+  const order = await Order.findById(existing._id).select("paidByCard paidByCardUsdCents total type").lean();
+  if (!order || paidSession.amount_total !== (order.paidByCardUsdCents ?? kwdFilsToUsdCents(sumKwdFils(order.type === "topup" ? order.total : order.paidByCard)))) {
     throw new PaymentError("sessionInvalid", 409);
   }
 
@@ -442,7 +454,7 @@ export async function completePaidStripeOrder(sessionId: string, userId: string)
   try {
     let result: Awaited<ReturnType<typeof finalizePendingOrder>> = null;
     await session.withTransaction(async () => {
-      result = await finalizePendingOrder(existing._id, session, { cardPaymentAmountFils: paidSession.amount_total ?? 0 });
+      result = await finalizePendingOrder(existing._id, session, { cardChargeUsdCents: paidSession.amount_total ?? 0 });
     });
     if (result) return result;
   } finally {

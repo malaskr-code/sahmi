@@ -4,13 +4,14 @@ import type { CardThemeId } from "@/data/cardThemes";
 const PRICE_LOCK_MS = 10 * 60 * 1000;
 
 type QuotePayload = {
-  version: 1;
+  version: 2;
   userId: string;
   productId: string;
   shares: number;
   payment: "wallet" | "card" | "both";
   unitPriceFils: number;
   walletFils: number;
+  cardChargeUsdCents: number;
   issuedAt: number;
 };
 
@@ -25,7 +26,7 @@ function signature(payload: string) {
 }
 
 export function signPriceQuote(input: Omit<QuotePayload, "version">) {
-  const payload = Buffer.from(JSON.stringify({ ...input, version: 1 }), "utf8").toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ ...input, version: 2 }), "utf8").toString("base64url");
   const digest = signature(payload).toString("base64url");
   return `${payload}.${digest}`;
 }
@@ -50,7 +51,7 @@ export function verifyPriceQuote(
   try {
     const payload = JSON.parse(Buffer.from(payloadText, "base64url").toString("utf8")) as QuotePayload;
     if (
-      payload.version !== 1 ||
+      payload.version !== 2 ||
       payload.userId !== expected.userId ||
       payload.productId !== expected.productId ||
       payload.shares !== expected.shares ||
@@ -61,6 +62,8 @@ export function verifyPriceQuote(
       !Number.isSafeInteger(payload.walletFils) ||
       payload.walletFils < 0 ||
       payload.walletFils % 10 !== 0 ||
+      !Number.isSafeInteger(payload.cardChargeUsdCents) ||
+      payload.cardChargeUsdCents < 0 ||
       !Number.isSafeInteger(payload.issuedAt) ||
       payload.issuedAt > now + 30_000 ||
       now - payload.issuedAt >= PRICE_LOCK_MS
@@ -68,6 +71,7 @@ export function verifyPriceQuote(
     return {
       unitPriceFils: payload.unitPriceFils,
       walletFils: payload.walletFils,
+      cardChargeUsdCents: payload.cardChargeUsdCents,
       issuedAt: payload.issuedAt,
       expiresAt: payload.issuedAt + PRICE_LOCK_MS,
     };
