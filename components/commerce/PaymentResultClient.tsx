@@ -17,7 +17,7 @@ type Result = {
 type CancelState = "checking" | "cancelled" | "paid" | "error";
 
 export function SuccessClient({ sessionId, orderId }: { sessionId: string; orderId: string }) {
-  const { copy } = useCommerce();
+  const { copy, currency } = useCommerce();
   const [result, setResult] = useState<Result | null>(null);
   const [checking, setChecking] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -58,6 +58,10 @@ export function SuccessClient({ sessionId, orderId }: { sessionId: string; order
         <h1 className="font-display mt-3 text-4xl font-semibold">{result ? result.kind === "topup" ? copy.success.topupTitle : copy.success.giftTitle : copy.success.failedTitle}</h1>
         <p className="mx-auto mt-4 max-w-lg text-sm leading-7 text-[var(--muted)]">{result ? result.kind === "topup" ? copy.success.topupBody : copy.success.giftBody : error}</p>
         {failed && <p role="alert" className="mt-5 rounded-xl border border-[var(--red)]/25 bg-[var(--red)]/5 p-4 text-xs leading-6 text-[var(--red)]">{copy.success.unavailable}</p>}
+        {result?.kind === "gift" && result.gift && <div className="mx-auto mt-6 flex max-w-md items-center justify-between gap-4 rounded-xl border border-[var(--line)] bg-[var(--soft)] px-4 py-3 text-start">
+          <span className="text-sm text-[var(--muted)]">{copy.gifts.purchaseValue}</span>
+          <span dir="ltr" className="font-semibold">{currency(result.gift.priceAtPurchase)}</span>
+        </div>}
         {result ? <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <Link href={result.kind === "topup" ? "/wallet" : "/gifts"} className="gold-button">{result.kind === "topup" ? copy.success.showWallet : copy.success.showGift}<ArrowRight size={16}/></Link>
           {result.kind === "gift" && <Link href="/gifts" className="outline-button">{copy.success.viewCard}</Link>}

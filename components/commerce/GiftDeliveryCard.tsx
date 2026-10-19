@@ -18,7 +18,7 @@ const palettes: Record<GiftRecord["theme"], { background: string; ink: string; a
 };
 
 export function GiftDeliveryCard({ gift, actions = true }: { gift: ShareableGift; actions?: boolean }) {
-  const { copy, lang, currency } = useCommerce();
+  const { copy, lang } = useCommerce();
   const [origin, setOrigin] = useState("");
   const [qr, setQr] = useState("");
   const [copied, setCopied] = useState(false);
@@ -94,15 +94,15 @@ export function GiftDeliveryCard({ gift, actions = true }: { gift: ShareableGift
     context.fillStyle = theme.ink;
     context.font = "600 66px Georgia, serif";
     context.fillText(companyName, textX, 220, 740);
-    context.font = "500 34px sans-serif";
-    context.fillText(`${gift.shares} ${copy.gifts.shares}`, textX, 292);
     context.font = "500 25px sans-serif";
-    context.fillText(`${copy.gifts.purchaseValue}: ${currency(gift.priceAtPurchase)}`, textX, 344, 740);
+    context.fillText(gift.company.ticker, textX, 262);
+    context.font = "500 34px sans-serif";
+    context.fillText(`${gift.shares} ${copy.gifts.shares}`, textX, 322);
     context.font = "600 28px sans-serif";
-    context.fillText(`${copy.gifts.recipient}: ${gift.recipientName}`, textX, 410, 740);
+    context.fillText(`${copy.gifts.recipient}: ${gift.recipientName}`, textX, 394, 740);
     if (gift.message) {
       context.font = "italic 24px sans-serif";
-      context.fillText(gift.message.slice(0, 100), textX, 474, 740);
+      context.fillText(gift.message.slice(0, 100), textX, 458, 740);
     }
     context.font = "600 22px monospace";
     context.fillText(`${copy.gifts.code}: ${gift.code}`, textX, 682, 740);
@@ -135,7 +135,6 @@ export function GiftDeliveryCard({ gift, actions = true }: { gift: ShareableGift
             <p dir="ltr" className="mt-1 text-xs tracking-widest opacity-70">{gift.company.ticker}</p>
             <div className="mt-5 flex flex-wrap items-end gap-x-7 gap-y-3 border-t border-current/15 pt-4">
               <div><p className="text-[10px] uppercase tracking-widest opacity-65">{copy.gifts.shares}</p><p className="font-display mt-1 text-2xl font-semibold">{gift.shares}</p></div>
-              <div><p className="text-[10px] uppercase tracking-widest opacity-65">{copy.gifts.purchaseValue}</p><p className="mt-1 font-semibold">{currency(gift.priceAtPurchase)}</p></div>
             </div>
             <div className="mt-4">
               <p className="text-[10px] uppercase tracking-widest opacity-65">{copy.gifts.recipient}</p>
@@ -144,7 +143,11 @@ export function GiftDeliveryCard({ gift, actions = true }: { gift: ShareableGift
             {gift.message && <p className="mt-4 border-s-2 border-current/25 ps-3 text-sm leading-6 opacity-85">{gift.message}</p>}
             <div className="mt-4 border-t border-current/15 pt-3">
               <p className="text-[10px] uppercase tracking-widest opacity-65">{copy.gifts.code}</p>
-              <p dir="ltr" className="mt-1 break-all font-mono text-sm font-bold tracking-[.12em]">{gift.code}</p>
+              <p dir="ltr" className="mt-1 flex flex-wrap gap-x-0 font-mono text-sm font-bold tracking-[.12em]">
+                {gift.code.split("-").map((group, index, groups) => (
+                  <span key={`${index}-${group}`} className="whitespace-nowrap">{group}{index < groups.length - 1 ? "-" : ""}</span>
+                ))}
+              </p>
             </div>
           </div>
           <div className="flex w-full items-center gap-3 rounded-xl bg-white p-2.5 text-[#183b38] sm:w-auto sm:flex-col">
