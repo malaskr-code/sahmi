@@ -20,6 +20,7 @@ function StoreDropdown({ mobile = false }: { mobile?: boolean }) {
   const currentSector = pathname === "/products"
     ? SECTOR_GROUPS.some(group => group.id === requestedSector) ? requestedSector : "all"
     : "";
+  const storeActive = pathname === "/products" || pathname.startsWith("/products/");
   const options = [
     { id: "all", href: "/products", label: t.nav.allCompanies },
     ...SECTOR_GROUPS.map(group => ({
@@ -47,7 +48,7 @@ function StoreDropdown({ mobile = false }: { mobile?: boolean }) {
 
   return (
     <div
-      className="relative"
+      className={mobile ? "relative h-full w-full" : "relative"}
       ref={rootRef}
       onMouseEnter={!mobile ? () => setOpen(true) : undefined}
       onMouseLeave={!mobile ? () => setOpen(false) : undefined}
@@ -62,16 +63,21 @@ function StoreDropdown({ mobile = false }: { mobile?: boolean }) {
         onFocus={!mobile ? () => setOpen(true) : undefined}
         onClick={() => setOpen(value => mobile ? !value : true)}
         className={mobile
-          ? "flex shrink-0 items-center gap-1"
+          ? `relative flex min-h-12 w-full items-center justify-center text-base font-semibold ${storeActive ? "text-[var(--gold-dark)]" : "text-[var(--ink)]"}`
           : "flex items-center gap-1 hover:text-[var(--gold-dark)]"}
       >
         {t.nav.store}
-        <ChevronDown size={14} aria-hidden="true" className={`transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          size={14}
+          aria-hidden="true"
+          className={`${mobile ? "absolute end-4" : ""} transition-transform ${open ? "rotate-180" : ""}`}
+        />
+        {mobile && storeActive && <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[var(--gold)]" />}
       </button>
       {open && (
         <div
           className={mobile
-            ? "absolute left-1/2 top-full z-50 max-h-[70vh] w-72 max-w-[calc(100vw-36px)] -translate-x-1/2 overflow-y-auto rounded-xl border border-[var(--line)] bg-[var(--paper)] p-2 text-start shadow-[var(--shadow)]"
+            ? "absolute end-0 top-full z-50 max-h-[70vh] w-[200%] overflow-y-auto border-x border-b border-[var(--line)] bg-[var(--paper)] p-2 text-start shadow-[var(--shadow)]"
             : "absolute start-0 top-full z-50 max-h-[70vh] min-w-60 overflow-y-auto rounded-xl border border-[var(--line)] bg-[var(--paper)] p-2 text-start shadow-[var(--shadow)]"}
           role="menu"
           aria-label={t.nav.store}
@@ -103,7 +109,16 @@ function StoreDropdown({ mobile = false }: { mobile?: boolean }) {
 
 function StoreDropdownFallback({ mobile = false }: { mobile?: boolean }) {
   const { t } = useStore();
-  return <Link className={mobile ? "shrink-0" : "hover:text-[var(--gold-dark)]"} href="/products">{t.nav.store}</Link>;
+  const pathname = usePathname();
+  const storeActive = pathname === "/products" || pathname.startsWith("/products/");
+  if (!mobile) return <Link className="hover:text-[var(--gold-dark)]" href="/products">{t.nav.store}</Link>;
+  return (
+    <Link href="/products" className={`relative flex min-h-12 w-full items-center justify-center text-base font-semibold ${storeActive ? "text-[var(--gold-dark)]" : "text-[var(--ink)]"}`}>
+      {t.nav.store}
+      <ChevronDown size={14} aria-hidden="true" className="absolute end-4" />
+      {storeActive && <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[var(--gold)]" />}
+    </Link>
+  );
 }
 
 function AccountMenu() {
@@ -197,6 +212,8 @@ function AccountMenu() {
 export function Navbar() {
   const { t, lang, setLang, dark, toggleTheme, gift } = useStore();
   const { user, loading } = useAuth();
+  const pathname = usePathname();
+  const homeActive = pathname === "/";
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-[var(--cream)]/95 backdrop-blur">
       <div className="page-shell">
@@ -223,13 +240,21 @@ export function Navbar() {
             {(!loading || user) && <div className="min-w-0"><AccountMenu /></div>}
           </div>
         </div>
-        <div className="flex min-w-0 items-center justify-center gap-8 overflow-visible pb-3 text-xs font-semibold md:hidden">
-          <Link className="shrink-0" href="/">{t.nav.home}</Link>
+      </div>
+      <nav className="relative grid min-h-12 grid-cols-2 border-t border-[var(--line)] text-sm font-semibold md:hidden" aria-label={t.nav.home}>
+          <Link
+            className={`relative flex min-h-12 items-center justify-center text-base ${homeActive ? "text-[var(--gold-dark)]" : "text-[var(--ink)]"}`}
+            href="/"
+            aria-current={homeActive ? "page" : undefined}
+          >
+            {t.nav.home}
+            {homeActive && <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[var(--gold)]" />}
+          </Link>
           <Suspense fallback={<StoreDropdownFallback mobile />}>
             <StoreDropdown mobile />
           </Suspense>
-        </div>
-      </div>
+          <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-1/2 z-10 w-px bg-[var(--line)]" />
+      </nav>
     </header>
   );
 }
