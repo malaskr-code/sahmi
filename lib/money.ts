@@ -3,6 +3,7 @@ export const STRIPE_AMOUNT_INCREMENT_FILS = 10;
 export const SERVICE_FEE_FILS = 250;
 export const MIN_TOPUP_FILS = 1000;
 export const USD_CENTS_PER_KWD = 325;
+export const MIN_CARD_PAYMENT_FILS = 160;
 
 export function kwdFilsToUsdCents(fils: number): number {
   if (!Number.isSafeInteger(fils) || fils < 0) throw new Error("Invalid KWD amount.");
