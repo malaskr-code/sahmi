@@ -1,12 +1,110 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { accountCopy } from "@/data/account-copy";
 import { useAuth } from "@/lib/auth-client";
 import { ChevronDown, LogOut, Moon, Sun, ShoppingBag, UserRound } from "lucide-react";
+import { SECTOR_GROUPS } from "@/data/sectorGroups";
+
+function StoreDropdown({ mobile = false }: { mobile?: boolean }) {
+  const { t } = useStore();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const requestedSector = searchParams.get("sector");
+  const currentSector = pathname === "/products"
+    ? SECTOR_GROUPS.some(group => group.id === requestedSector) ? requestedSector : "all"
+    : "";
+  const options = [
+    { id: "all", href: "/products", label: t.nav.allCompanies },
+    ...SECTOR_GROUPS.map(group => ({
+      id: group.id,
+      href: `/products?sector=${group.id}`,
+      label: t.explore.sectors[group.id],
+    })),
+  ];
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !rootRef.current?.contains(event.target)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div
+      className="relative"
+      ref={rootRef}
+      onMouseEnter={!mobile ? () => setOpen(true) : undefined}
+      onMouseLeave={!mobile ? () => setOpen(false) : undefined}
+      onBlur={event => {
+        if (!(event.relatedTarget instanceof Node) || !rootRef.current?.contains(event.relatedTarget)) setOpen(false);
+      }}
+    >
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onFocus={!mobile ? () => setOpen(true) : undefined}
+        onClick={() => setOpen(value => mobile ? !value : true)}
+        className={mobile
+          ? "flex shrink-0 items-center gap-1"
+          : "flex items-center gap-1 hover:text-[var(--gold-dark)]"}
+      >
+        {t.nav.store}
+        <ChevronDown size={14} aria-hidden="true" className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div
+          className={mobile
+            ? "absolute left-1/2 top-full z-50 max-h-[70vh] w-72 max-w-[calc(100vw-36px)] -translate-x-1/2 overflow-y-auto rounded-xl border border-[var(--line)] bg-[var(--paper)] p-2 text-start shadow-[var(--shadow)]"
+            : "absolute start-0 top-full z-50 max-h-[70vh] min-w-60 overflow-y-auto rounded-xl border border-[var(--line)] bg-[var(--paper)] p-2 text-start shadow-[var(--shadow)]"}
+          role="menu"
+          aria-label={t.nav.store}
+        >
+          {options.map(option => {
+            const selected = currentSector === option.id;
+            return (
+              <Link
+                key={option.id}
+                href={option.href}
+                role="menuitem"
+                aria-current={selected ? "page" : undefined}
+                onClick={() => setOpen(false)}
+                className={`block rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                  selected
+                    ? "bg-[var(--gold)]/20 font-semibold text-[var(--gold-dark)]"
+                    : "hover:bg-[var(--soft)] hover:text-[var(--gold-dark)]"
+                }`}
+              >
+                {option.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StoreDropdownFallback({ mobile = false }: { mobile?: boolean }) {
+  const { t } = useStore();
+  return <Link className={mobile ? "shrink-0" : "hover:text-[var(--gold-dark)]"} href="/products">{t.nav.store}</Link>;
+}
 
 function AccountMenu() {
   const { lang, t } = useStore();
@@ -110,7 +208,9 @@ export function Navbar() {
             </Link>
             <nav className="hidden items-center gap-5 text-sm font-medium md:flex" aria-label={t.nav.home}>
               <Link className="hover:text-[var(--gold-dark)]" href="/">{t.nav.home}</Link>
-              <Link className="hover:text-[var(--gold-dark)]" href="/products">{t.nav.store}</Link>
+              <Suspense fallback={<StoreDropdownFallback />}>
+                <StoreDropdown />
+              </Suspense>
             </nav>
           </div>
           <div className="flex min-w-0 items-center gap-2">
@@ -125,7 +225,9 @@ export function Navbar() {
         </div>
         <div className="flex min-w-0 items-center justify-center gap-8 overflow-visible pb-3 text-xs font-semibold md:hidden">
           <Link className="shrink-0" href="/">{t.nav.home}</Link>
-          <Link className="shrink-0" href="/products">{t.nav.store}</Link>
+          <Suspense fallback={<StoreDropdownFallback mobile />}>
+            <StoreDropdown mobile />
+          </Suspense>
         </div>
       </div>
     </header>
