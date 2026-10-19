@@ -3,3 +3,4 @@
 - [Preview session cookies](session-cookies.md) — secure cross-site session cookies need `SameSite=None` for embedded Replit previews.
 - [Wallet ledger invariants](wallet-ledger.md) — derive wallet balance from transaction entries; reserve funds for pending gift checkouts and finalize atomically.
 - [USD Stripe charges](usd-card-currency.md) — keep Sahmi totals and wallet accounting in KWD; convert Stripe card charges at the confirmed fixed rate.
+- [Portable npm lockfiles](portable-npm-lockfiles.md) — keep package tarball URLs on the public registry; Replit's private firewall host breaks external CI installs.
