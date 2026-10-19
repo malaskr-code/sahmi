@@ -20,6 +20,8 @@ test("KWD amounts use fils and enforce Stripe's 10-fils increment", () => {
   assert.equal(kwdFilsToUsdCents(10), 3);
   assert.equal(kwdFilsToUsdCents(250), 81);
   assert.equal(kwdFilsToUsdCents(4000), 1300);
+  assert.equal(kwdFilsToUsdCents(150), 49);
+  assert.equal(kwdFilsToUsdCents(160), 52);
   assert.equal(filsToKwd(250), 0.25);
   assert.equal(parseTopupFils(1), 1000);
   assert.equal(parseTopupFils(5), 5000);

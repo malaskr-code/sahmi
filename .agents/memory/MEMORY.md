@@ -2,3 +2,4 @@
 - [Stock API quota](stock-api-quota.md) — the small oanor allowance requires batched, infrequent server-side refreshes, including failure cooldowns.
 - [Preview session cookies](session-cookies.md) — secure cross-site session cookies need `SameSite=None` for embedded Replit previews.
 - [Wallet ledger invariants](wallet-ledger.md) — derive wallet balance from transaction entries; reserve funds for pending gift checkouts and finalize atomically.
+- [USD Stripe charges](usd-card-currency.md) — keep Sahmi totals and wallet accounting in KWD; convert Stripe card charges at the confirmed fixed rate.

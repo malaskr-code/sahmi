@@ -6,7 +6,7 @@ import Product from "@/models/Product";
 import Transaction from "@/models/Transaction";
 import User from "@/models/User";
 import { CARD_THEME_IDS, type CardThemeId } from "@/data/cardThemes";
-import { SERVICE_FEE_FILS, filsToKwd, kwdFilsToUsdCents, kwdToFils, parseTopupFils, USD_CENTS_PER_KWD } from "@/lib/money";
+import { MIN_CARD_PAYMENT_FILS, SERVICE_FEE_FILS, filsToKwd, kwdFilsToUsdCents, kwdToFils, parseTopupFils, USD_CENTS_PER_KWD } from "@/lib/money";
 import { createGiftCode, encryptGiftCode, hashGiftCode } from "@/lib/gift-codes";
 import { getStripeClient } from "@/lib/stripe";
 import { readReservedWalletFils, readWalletFils } from "@/lib/wallet";
@@ -54,6 +54,22 @@ function sumKwdFils(amount: number) {
   } catch {
     throw new PaymentError("invalidAmount", 409);
   }
+}
+
+function walletContributionFils(payment: PaymentMode, totalFils: number, availableFils: number) {
+  if (payment === "wallet") return totalFils;
+  if (payment === "card") return 0;
+  const walletFils = Math.min(availableFils, totalFils);
+  const remainingFils = totalFils - walletFils;
+  return remainingFils > 0 && remainingFils < MIN_CARD_PAYMENT_FILS
+    ? totalFils - MIN_CARD_PAYMENT_FILS
+    : walletFils;
+}
+
+function orderUsdChargeCents(order: { paidByCardUsdCents?: number | null }, cardFils: number) {
+  const stored = order.paidByCardUsdCents;
+  if (Number.isSafeInteger(stored) && (cardFils === 0 || Number(stored) > 0)) return Number(stored);
+  return kwdFilsToUsdCents(cardFils);
 }
 
 async function lockWallet(userId: string, session: ClientSession) {
@@ -136,7 +152,7 @@ async function finalizePendingOrder(
   if (order.type === "topup") {
     const cardChargeUsdCents = options.cardChargeUsdCents;
     const topupFils = sumKwdFils(order.total);
-    const expectedUsdCents = order.paidByCardUsdCents ?? kwdFilsToUsdCents(topupFils);
+    const expectedUsdCents = orderUsdChargeCents(order, sumKwdFils(order.paidByCard));
     if (
       sumKwdFils(order.paidByCard) !== topupFils ||
       expectedUsdCents !== kwdFilsToUsdCents(topupFils) ||
@@ -167,7 +183,7 @@ async function finalizePendingOrder(
   const feeFils = sumKwdFils(order.fee);
   const totalFils = subtotalFils + feeFils;
   const expectedCardFils = sumKwdFils(order.paidByCard);
-  const expectedUsdCents = order.paidByCardUsdCents ?? kwdFilsToUsdCents(expectedCardFils);
+  const expectedUsdCents = orderUsdChargeCents(order, expectedCardFils);
   if (
     (expectedCardFils === 0 ? options.cardChargeUsdCents !== undefined && options.cardChargeUsdCents !== 0 : options.cardChargeUsdCents !== expectedUsdCents) ||
     expectedUsdCents !== kwdFilsToUsdCents(expectedCardFils) ||
@@ -217,7 +233,7 @@ export async function prepareGiftPriceQuote(userId: string, input: unknown) {
   ]);
   const availableFils = Math.max(0, balanceFils - reservedFils);
   if (payment === "wallet" && availableFils < totalFils) throw new PaymentError("insufficientWallet");
-  const walletFils = payment === "wallet" ? totalFils : payment === "both" ? Math.min(availableFils, totalFils) : 0;
+  const walletFils = walletContributionFils(payment, totalFils, availableFils);
   const cardChargeUsdCents = kwdFilsToUsdCents(totalFils - walletFils);
   const issuedAt = Date.now();
   const quoteToken = signPriceQuote({ userId, productId, shares, payment, unitPriceFils, walletFils, cardChargeUsdCents, issuedAt });
@@ -360,11 +376,7 @@ export async function startGiftCheckout(user: { id: string; email: string }, inp
     const reservedFils = await readReservedWalletFils(user.id, session, startedAt);
     const availableFils = Math.max(0, balanceFils - reservedFils);
     if (gift.payment === "wallet" && availableFils < totalFils) throw new PaymentError("insufficientWallet");
-    const walletFils = gift.payment === "wallet"
-      ? totalFils
-      : gift.payment === "both"
-        ? Math.min(availableFils, totalFils)
-        : 0;
+    const walletFils = walletContributionFils(gift.payment, totalFils, availableFils);
     if (walletFils !== priceQuote.walletFils) throw new PaymentError("walletBalanceChanged", 409);
     const cardFils = totalFils - walletFils;
     if (cardFils && cardFils % 10 !== 0) throw new PaymentError("invalidAmount");
@@ -446,7 +458,7 @@ export async function completePaidStripeOrder(sessionId: string, userId: string)
   ) throw new PaymentError("sessionPending", 409);
 
   const order = await Order.findById(existing._id).select("paidByCard paidByCardUsdCents total type").lean();
-  if (!order || paidSession.amount_total !== (order.paidByCardUsdCents ?? kwdFilsToUsdCents(sumKwdFils(order.type === "topup" ? order.total : order.paidByCard)))) {
+  if (!order || paidSession.amount_total !== orderUsdChargeCents(order, sumKwdFils(order.type === "topup" ? order.total : order.paidByCard))) {
     throw new PaymentError("sessionInvalid", 409);
   }
 
