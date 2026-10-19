@@ -135,6 +135,7 @@ async function createGiftForOrder(order: {
     recipientName: order.recipientName,
     codeHash: hashGiftCode(code),
     codeEncrypted: encryptGiftCode(code),
+    codeLast4: code.slice(-4),
   });
   await gift.save({ session });
   return { giftId: String(gift._id), code };

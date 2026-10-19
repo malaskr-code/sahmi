@@ -67,6 +67,10 @@ async function main() {
   const me = (await meResponse.json()).user;
   assert.equal(me.id, first.id);
   assert.equal("passwordHash" in me, false);
+   await User.updateOne({ _id: first.id, email }, { $set: { disabled: true } });
+   assert.equal((await post("/api/auth/login", { email, password })).status, 401, "Disabled accounts cannot log in");
+   assert.equal((await fetch(base + "/api/auth/me", { headers: { cookie } })).status, 401, "Disabling an account invalidates its existing session");
+   await User.updateOne({ _id: first.id, email }, { $set: { disabled: false } });
   console.log("STEP 6 PASS: wrong details 401, seven-day JWT, secure httpOnly SameSite cookie, safe current-user response.");
 
   const secondResponse = await post("/api/auth/signup", { ...signup, name: "Second Check", email: secondEmail });
@@ -89,11 +93,28 @@ async function main() {
     assert.equal((await fetch(base + path, { redirect: "manual" })).status, 403, `Anonymous admin access ${path}`);
     assert.equal((await fetch(base + path, { headers: { cookie }, redirect: "manual" })).status, 403, `User admin access ${path}`);
   }
+   assert.equal((await fetch(base + "/api/admin", {
+     method: "PATCH",
+     headers: { cookie, Origin: base, "Content-Type": "application/json" },
+     body: JSON.stringify({ action: "setCompanyActive", id: first.id, active: false }),
+   })).status, 403, "Non-admin mutation access is forbidden");
   // Only this temporary test account is changed; existing accounts are untouched.
   await User.updateOne({ _id: first.id, email }, { $set: { role: "admin" } });
   for (const path of ["/admin", "/api/admin"]) {
     assert.equal((await fetch(base + path, { headers: { cookie }, redirect: "manual" })).status, 200, `Admin access ${path}`);
   }
+   const selfDisable = await fetch(base + "/api/admin", {
+     method: "PATCH",
+     headers: { cookie, Origin: base, "Content-Type": "application/json" },
+     body: JSON.stringify({ action: "setUserDisabled", id: first.id, disabled: true }),
+   });
+   assert.equal(selfDisable.status, 400, "Admins cannot disable themselves");
+   assert.equal((await selfDisable.json()).error, "selfDisable");
+   for (const view of ["overview", "orders", "companies", "prices", "users"]) {
+     const response = await fetch(base + `/api/admin?view=${view}`, { headers: { cookie } });
+     assert.equal(response.status, 200, `Admin dashboard view ${view}`);
+     assert.equal(JSON.stringify(await response.json()).includes("passwordHash"), false, `Dashboard view ${view} must not expose password hashes`);
+   }
   await User.updateOne({ _id: first.id, email }, { $set: { role: "user" } });
   assert.equal((await fetch(base + "/api/admin", { headers: { cookie } })).status, 403, "Role changes checked from DB on every request");
   console.log("STEP 8 PASS: all four protected redirects preserve destination, admin pages/API enforce role, sessions cannot choose another user.");

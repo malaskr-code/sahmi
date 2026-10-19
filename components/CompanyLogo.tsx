@@ -29,6 +29,7 @@ export function CompanyLogo({ src, name, logoBg, className }: CompanyLogoProps) 
           aria-hidden="true"
           width={96}
           height={96}
+          unoptimized
           className="h-full w-full object-contain"
           onError={() => setFailedSrc(src)}
         />

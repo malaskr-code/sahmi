@@ -1,3 +1,6 @@
+import mongoose from "mongoose";
+import ApiCallLog from "@/models/ApiCallLog";
+
 export const PRICE_REFRESH_MS = 8 * 60 * 60 * 1000;
 
 type Quote = { symbol: string; last: number; change_pct: number; currency: string };
@@ -29,11 +32,35 @@ export async function fetchQuotes(tickers: string[]) {
   if (!key) throw new Error("KUWAIT_STOCK_API_KEY is missing. Add it in Replit Secrets.");
   const url = new URL("https://api.oanor.com/kuwait-stock-api/v1/quote");
   url.searchParams.set("symbols", tickers.join(","));
-  const response = await fetch(url, {
-    headers: { "x-oanor-key": key },
-    cache: "no-store",
-    signal: AbortSignal.timeout(12000),
-  });
-  if (!response.ok) throw new Error(`Stock API request failed (${response.status}).`);
-  return parseQuotes(await response.json(), tickers);
+  const calledAt = new Date();
+  let statusCode: number | null = null;
+  let succeeded = false;
+  try {
+    const response = await fetch(url, {
+      headers: { "x-oanor-key": key },
+      cache: "no-store",
+      signal: AbortSignal.timeout(12000),
+    });
+    statusCode = response.status;
+    if (!response.ok) throw new Error(`Stock API request failed (${response.status}).`);
+    const quotes = parseQuotes(await response.json(), tickers);
+    succeeded = true;
+    return quotes;
+  } finally {
+    // API requests are logged only on the already-open database connection; a
+    // logging outage must never replace the quote result or its original error.
+    if (mongoose.connection.readyState === 1) {
+      try {
+        await ApiCallLog.create({
+          provider: "oanor",
+          endpoint: "/kuwait-stock-api/v1/quote",
+          calledAt,
+          succeeded,
+          statusCode,
+        });
+      } catch {
+        console.warn("Could not record the oanor API call.");
+      }
+    }
+  }
 }
