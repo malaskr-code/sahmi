@@ -1,7 +1,0 @@
-{
-  "/api/auth/me/route": "app/api/auth/me/route.js",
-  "/api/checkout/route": "app/api/checkout/route.js",
-  "/api/products/[id]/route": "app/api/products/[id]/route.js",
-  "/checkout/page": "app/checkout/page.js",
-  "/login/page": "app/login/page.js"
-}

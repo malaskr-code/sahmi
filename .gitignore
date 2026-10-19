@@ -1,5 +1,12 @@
 .env*
+!.env.example
 node_modules/
 .next/
-tsconfig.tsbuildinfo
+out/
+BUILD_ID
+*.tsbuildinfo
+.vercel/
+.cache/
+.upm/
+attached_assets/
 generated-artifacts/
