@@ -26,3 +26,10 @@ body[dir="rtl"] .font-display{font-family:var(--font-arabic)}
 .home-hero{padding-top:32px}
 .home-section{padding-block:64px}
 @media(min-width:768px){.home-hero{padding-top:48px}.home-section{padding-block:96px}}
+@keyframes sahmi-login-prompt-overlay{from{opacity:0}to{opacity:1}}
+@keyframes sahmi-login-prompt-sheet{from{opacity:.8;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+@keyframes sahmi-login-prompt-card{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.login-prompt-overlay{animation:sahmi-login-prompt-overlay .18s ease-out both}
+.login-prompt-sheet{animation:sahmi-login-prompt-sheet .28s cubic-bezier(.2,.8,.2,1) both}
+@media(min-width:640px){.login-prompt-sheet{animation:sahmi-login-prompt-card .22s ease-out both}}
+@media(prefers-reduced-motion:reduce){.login-prompt-overlay,.login-prompt-sheet{animation:none!important}}
