@@ -13,6 +13,7 @@ const giftSchema = new Schema({
   recipientName: { type: String, required: true, trim: true, maxlength: 120 },
   codeHash: { type: String, required: true, unique: true, select: false },
   codeEncrypted: { type: String, required: true, select: false },
+  codeLast4: { type: String, default: "", select: false },
   status: { type: String, enum: ["active", "redeemed"], default: "active" },
   redeemedBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
   redeemedAt: { type: Date, default: null },

@@ -6,6 +6,7 @@ const userSchema = new Schema({
   passwordHash: { type: String, required: true, select: false },
   phone: { type: String, required: true, trim: true },
   role: { type: String, enum: ["user", "admin"], default: "user" },
+  disabled: { type: Boolean, default: false },
   walletRevision: { type: Number, default: 0, select: false },
   createdAt: { type: Date, default: Date.now },
 });

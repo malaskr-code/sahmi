@@ -14,9 +14,9 @@ const logosByTicker: Record<string, { src: string; background: string }> = {
 };
 
 export function companyLogoFor(ticker: string, fallback = "") {
-  return logosByTicker[ticker.trim().toUpperCase()]?.src ?? fallback;
+  return fallback || logosByTicker[ticker.trim().toUpperCase()]?.src || "";
 }
 
-export function companyLogoBgFor(ticker: string, fallback = "#ffffff") {
-  return logosByTicker[ticker.trim().toUpperCase()]?.background ?? fallback;
+export function companyLogoBgFor(ticker: string, fallback = "") {
+  return fallback || logosByTicker[ticker.trim().toUpperCase()]?.background || "#ffffff";
 }

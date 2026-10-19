@@ -47,8 +47,8 @@ export async function userFromToken(token: string | undefined): Promise<AuthUser
   if (!subject || !mongoose.isValidObjectId(subject)) return null;
   await connectDB();
   // Never trust a role, email or user ID sent by the client; re-read the account.
-  const user = await User.findById(subject).select("name email phone role").lean();
-  return user ? publicUser(user) : null;
+  const user = await User.findById(subject).select("name email phone role disabled").lean();
+  return user && !user.disabled ? publicUser(user) : null;
 }
 
 export async function requestUser(request: Request) {

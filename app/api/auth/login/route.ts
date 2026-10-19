@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     await connectDB();
     const user = await User.findOne({ email: (body.email as string).trim().toLowerCase() }).select("+passwordHash");
     const matches = await bcrypt.compare(body.password as string, user?.passwordHash ?? DUMMY_HASH);
-    if (!user || !matches) return authError("invalidCredentials", 401, request);
+    if (!user || !matches || user.disabled) return authError("invalidCredentials", 401, request);
     const token = await createSessionToken(String(user._id));
     const response = authSuccess({ user: publicUser(user) });
     response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions);
