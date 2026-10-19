@@ -10,6 +10,7 @@ import { formatKwd, SERVICE_FEE } from "@/lib/products";
 import { useProducts } from "@/lib/use-products";
 import { ProductFeedback } from "@/components/ProductFeedback";
 import { PricesAsOf } from "@/components/PricesAsOf";
+import { CompanyLogo } from "@/components/CompanyLogo";
 import { useStore } from "@/lib/store";
 
 export default function ProductDetailPage() {
@@ -86,9 +87,7 @@ export default function ProductDetailPage() {
       </Link>
       <div className="mt-6 grid gap-7 lg:grid-cols-[1fr_420px]">
         <div className="card h-fit overflow-hidden p-7 md:p-10">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[var(--gold)]/40 bg-[var(--soft)] font-display text-lg font-bold text-[var(--gold-dark)]">
-            {product.name.split(/\s+/).map((word) => word[0]).slice(0, 3).join("")}
-          </div>
+          <CompanyLogo src={product.image} name={name} className="h-16 w-16 rounded-xl"/>
           <p className="mt-8 text-xs font-bold uppercase tracking-[.16em] text-[var(--gold-dark)]">
             {lang === "ar" ? product.sectorAr : t.common.sectors[product.sector as keyof typeof t.common.sectors] ?? product.sector}
           </p>

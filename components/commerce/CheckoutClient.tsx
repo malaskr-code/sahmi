@@ -9,6 +9,7 @@ import type { CardThemeId } from "@/data/cardThemes";
 import { useStore } from "@/lib/store";
 import { getProduct } from "@/lib/products";
 import { CardThemePreview } from "@/components/CardThemePreview";
+import { CompanyLogo } from "@/components/CompanyLogo";
 import { useCommerce, PageIntro, LoadingPanel, ErrorPanel, responseError } from "./shared";
 
 type Mode = "wallet" | "card" | "both" | "demo";
@@ -30,6 +31,7 @@ export default function CheckoutClient() {
   const [pending, setPending] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [productName, setProductName] = useState("");
+  const [productImage, setProductImage] = useState("");
   const [productLoading, setProductLoading] = useState(false);
 
   const productId = gift?.product.id ?? "";
@@ -41,13 +43,20 @@ export default function CheckoutClient() {
     if (!productId) return;
     let active = true;
     setProductLoading(true);
+    setProductImage(gift?.product.image ?? "");
     getProduct(productId).then(product => {
-      if (active) setProductName(lang === "ar" ? product.nameAr : product.name);
+      if (active) {
+        setProductName(lang === "ar" ? product.nameAr : product.name);
+        setProductImage(product.image);
+      }
     }).catch(() => {
-      if (active) setProductName(lang === "ar" ? gift?.product.nameAr ?? "" : gift?.product.name ?? "");
+      if (active) {
+        setProductName(lang === "ar" ? gift?.product.nameAr ?? "" : gift?.product.name ?? "");
+        setProductImage(gift?.product.image ?? "");
+      }
     }).finally(() => { if (active) setProductLoading(false); });
     return () => { active = false; };
-  }, [productId, lang, gift?.product.name, gift?.product.nameAr]);
+  }, [productId, lang, gift?.product.name, gift?.product.nameAr, gift?.product.image]);
 
   const getQuote = useCallback(async (signal?: AbortSignal): Promise<boolean> => {
     if (!productId || shares < 1) return false;
@@ -140,7 +149,7 @@ export default function CheckoutClient() {
       <div className="space-y-5">
         <section className="card p-5 sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--line)] pb-5">
-            <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[var(--gold-dark)]">{gift.product.ticker}</p><h2 className="font-display mt-1 text-2xl font-semibold">{productName || gift.product.name}</h2></div>
+            <div className="flex min-w-0 items-center gap-3"><CompanyLogo src={productImage} name={productName || gift.product.name} className="h-14 w-14 rounded-xl"/><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-[var(--gold-dark)]">{gift.product.ticker}</p><h2 className="font-display mt-1 text-2xl font-semibold">{productName || gift.product.name}</h2></div></div>
             <div className="flex items-center gap-3 rounded-full border border-[var(--line)] px-2 py-1"><button type="button" aria-label={t.common.decrease} disabled={shares <= 1} onClick={() => { setQuote(null); setQuoteToken(""); setGift({ ...gift, shares: Math.max(1, shares - 1) }); }} className="rounded-full p-2 transition hover:bg-[var(--soft)] disabled:opacity-40"><Minus size={14}/></button><span className="min-w-5 text-center text-sm font-semibold">{shares}</span><button type="button" aria-label={t.common.increase} onClick={() => { setQuote(null); setQuoteToken(""); setGift({ ...gift, shares: shares + 1 }); }} className="rounded-full p-2 transition hover:bg-[var(--soft)]"><Plus size={14}/></button></div>
           </div>
           <div className="mt-5 grid gap-5 sm:grid-cols-[132px_1fr]">
