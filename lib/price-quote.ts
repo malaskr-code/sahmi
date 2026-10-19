@@ -58,10 +58,8 @@ export function verifyPriceQuote(
       payload.payment !== expected.payment ||
       !Number.isSafeInteger(payload.unitPriceFils) ||
       payload.unitPriceFils <= 0 ||
-      payload.unitPriceFils % 10 !== 0 ||
       !Number.isSafeInteger(payload.walletFils) ||
       payload.walletFils < 0 ||
-      payload.walletFils % 10 !== 0 ||
       !Number.isSafeInteger(payload.cardChargeUsdCents) ||
       payload.cardChargeUsdCents < 0 ||
       !Number.isSafeInteger(payload.issuedAt) ||

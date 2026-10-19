@@ -11,24 +11,27 @@ import {
 import { createGiftCode, decryptGiftCode, encryptGiftCode, hashGiftCode } from "../lib/gift-codes";
 import { signPriceQuote, verifyPriceQuote } from "../lib/price-quote";
 
-test("KWD amounts use fils and enforce Stripe's 10-fils increment", () => {
+test("KWD prices use fils while wallet top-ups keep Stripe's 10-fils increment", () => {
   assert.equal(KWD_FILS_PER_UNIT, 1000);
   assert.equal(SERVICE_FEE_FILS, 250);
   assert.equal(kwdToFils(5), 5000);
   assert.equal(kwdToFils(0.01), 10);
+  assert.equal(kwdToFils(0.813), 813);
   assert.equal(kwdFilsToUsdCents(1000), 325);
   assert.equal(kwdFilsToUsdCents(10), 3);
   assert.equal(kwdFilsToUsdCents(250), 81);
   assert.equal(kwdFilsToUsdCents(4000), 1300);
   assert.equal(kwdFilsToUsdCents(150), 49);
+  assert.equal(kwdFilsToUsdCents(153), 50);
   assert.equal(kwdFilsToUsdCents(160), 52);
   assert.equal(filsToKwd(250), 0.25);
   assert.equal(parseTopupFils(1), 1000);
   assert.equal(parseTopupFils(5), 5000);
   assert.equal(parseTopupFils(0.99), null);
   assert.equal(parseTopupFils(1.001), null);
+  assert.equal(parseTopupFils(1.005), null);
   assert.equal(parseTopupFils("5"), null);
-  assert.throws(() => kwdToFils(0.009));
+  assert.throws(() => kwdToFils(0.0009));
 });
 
 test("gift codes are readable, normalized before hashing, and only recoverable with encryption", () => {
@@ -55,17 +58,17 @@ test("gift price quotes are signed to the user and expire after ten minutes", ()
       productId: "zain",
       shares: 3,
       payment: "both" as const,
-      unitPriceFils: 1250,
-      walletFils: 1500,
-      cardChargeUsdCents: 813,
+      unitPriceFils: 813,
+      walletFils: 153,
+      cardChargeUsdCents: 824,
       issuedAt,
     };
     const token = signPriceQuote(input);
     const expected = { userId: "user-123", productId: "zain", shares: 3, payment: "both" as const };
     assert.deepEqual(verifyPriceQuote(token, expected, issuedAt + 599_999), {
-      unitPriceFils: 1250,
-      walletFils: 1500,
-      cardChargeUsdCents: 813,
+      unitPriceFils: 813,
+      walletFils: 153,
+      cardChargeUsdCents: 824,
       issuedAt,
       expiresAt: issuedAt + 600_000,
     });

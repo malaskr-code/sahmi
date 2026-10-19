@@ -379,7 +379,6 @@ export async function startGiftCheckout(user: { id: string; email: string }, inp
     const walletFils = walletContributionFils(gift.payment, totalFils, availableFils);
     if (walletFils !== priceQuote.walletFils) throw new PaymentError("walletBalanceChanged", 409);
     const cardFils = totalFils - walletFils;
-    if (cardFils && cardFils % 10 !== 0) throw new PaymentError("invalidAmount");
 
     const order = new Order({
       _id: orderId,

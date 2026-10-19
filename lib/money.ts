@@ -3,7 +3,7 @@ export const STRIPE_AMOUNT_INCREMENT_FILS = 10;
 export const SERVICE_FEE_FILS = 250;
 export const MIN_TOPUP_FILS = 1000;
 export const USD_CENTS_PER_KWD = 325;
-export const MIN_CARD_PAYMENT_FILS = 160;
+export const MIN_CARD_PAYMENT_FILS = 153;
 
 export function kwdFilsToUsdCents(fils: number): number {
   if (!Number.isSafeInteger(fils) || fils < 0) throw new Error("Invalid KWD amount.");
@@ -14,8 +14,8 @@ export function kwdToFils(value: number): number {
   if (!Number.isFinite(value) || value < 0) throw new Error("Invalid KWD amount.");
   const exactFils = value * KWD_FILS_PER_UNIT;
   const fils = Math.round(exactFils);
-  if (Math.abs(exactFils - fils) > 0.00001 || fils % STRIPE_AMOUNT_INCREMENT_FILS !== 0) {
-    throw new Error("KWD amounts must be whole fils and divisible by 10.");
+  if (Math.abs(exactFils - fils) > 0.00001) {
+    throw new Error("KWD amounts must be whole fils.");
   }
   return fils;
 }
@@ -29,7 +29,7 @@ export function parseTopupFils(value: unknown): number | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
   try {
     const fils = kwdToFils(value);
-    return fils >= MIN_TOPUP_FILS ? fils : null;
+    return fils >= MIN_TOPUP_FILS && fils % STRIPE_AMOUNT_INCREMENT_FILS === 0 ? fils : null;
   } catch {
     return null;
   }

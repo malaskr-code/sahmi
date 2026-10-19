@@ -28,7 +28,7 @@ const messages: Record<"en" | "ar", Record<PaymentErrorCode, string>> = {
   en: {
     invalidRequest: "The request is invalid. Please check the details and try again.",
     unauthorized: "Please log in to continue.",
-    invalidAmount: "Enter a valid amount in KWD, in increments of 0.010 KWD.",
+    invalidAmount: "Enter a valid amount in KWD.",
     minimumTopup: "The minimum wallet top-up is 1.000 KWD.",
     priceQuoteExpired: "The price was updated. Please review the new total.",
     walletBalanceChanged: "Your wallet balance changed. Please review the payment.",
@@ -45,7 +45,7 @@ const messages: Record<"en" | "ar", Record<PaymentErrorCode, string>> = {
   ar: {
     invalidRequest: "الطلب غير صالح. تحقق من البيانات وحاول مرة أخرى.",
     unauthorized: "يرجى تسجيل الدخول للمتابعة.",
-    invalidAmount: "أدخل مبلغاً صحيحاً بالدينار، بزيادات قدرها 0.010 د.ك.",
+    invalidAmount: "أدخل مبلغاً صحيحاً بالدينار الكويتي.",
     minimumTopup: "الحد الأدنى لشحن المحفظة هو 1.000 د.ك.",
     priceQuoteExpired: "تم تحديث السعر. يرجى مراجعة الإجمالي الجديد.",
     walletBalanceChanged: "تغيّر رصيد محفظتك. يرجى مراجعة طريقة الدفع.",
