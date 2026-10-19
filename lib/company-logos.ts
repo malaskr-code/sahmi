@@ -1,18 +1,22 @@
-const logosByTicker: Record<string, string> = {
-  NBK: "/company-logos/nbk.png",
-  KFH: "/company-logos/kfh.png",
-  ZAIN: "/company-logos/zain.png",
-  GBK: "/company-logos/gulf-bank.png",
-  MKHZN: "/company-logos/agility.png",
-  BOUBYAN: "/company-logos/boubyan.png",
-  MABANEE: "/company-logos/mabanee.png",
-  HUMANSOFT: "/company-logos/humansoft.png",
-  BOURSA: "/company-logos/boursa-kuwait.png",
-  OOREDOO: "/company-logos/ooredoo.png",
-  WARBABANK: "/company-logos/warba-bank.png",
-  CBK: "/company-logos/commercial-bank.png",
+const logosByTicker: Record<string, { src: string; background: string }> = {
+  NBK: { src: "/company-logos/nbk.png", background: "#f0f3fa" },
+  KFH: { src: "/company-logos/kfh.png", background: "#ffffff" },
+  ZAIN: { src: "/company-logos/zain.png", background: "#020c4b" },
+  GBK: { src: "/company-logos/gulf-bank.png", background: "#ffffff" },
+  MKHZN: { src: "/company-logos/agility.png", background: "#ffffff" },
+  BOUBYAN: { src: "/company-logos/boubyan.png", background: "#ffffff" },
+  MABANEE: { src: "/company-logos/mabanee.png", background: "#ffffff" },
+  HUMANSOFT: { src: "/company-logos/humansoft.png", background: "#fbfbfb" },
+  BOURSA: { src: "/company-logos/boursa-kuwait.png", background: "#cda468" },
+  OOREDOO: { src: "/company-logos/ooredoo.png", background: "#ffffff" },
+  WARBABANK: { src: "/company-logos/warba-bank.png", background: "#ffffff" },
+  CBK: { src: "/company-logos/commercial-bank.png", background: "#ffffff" },
 };
 
 export function companyLogoFor(ticker: string, fallback = "") {
-  return logosByTicker[ticker.trim().toUpperCase()] ?? fallback;
+  return logosByTicker[ticker.trim().toUpperCase()]?.src ?? fallback;
+}
+
+export function companyLogoBgFor(ticker: string, fallback = "#ffffff") {
+  return logosByTicker[ticker.trim().toUpperCase()]?.background ?? fallback;
 }

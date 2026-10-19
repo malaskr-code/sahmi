@@ -12,7 +12,7 @@ export type Copy = (typeof commerceCopy)[keyof typeof commerceCopy];
 export type GiftRecord = {
   id: string;
   direction: "sent" | "received";
-  company: { ticker: string; name: string; nameAr: string; image: string };
+  company: { ticker: string; name: string; nameAr: string; image: string; logoBg: string };
   shares: number;
   priceAtPurchase: number;
   currentValue: number;

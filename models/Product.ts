@@ -10,6 +10,7 @@ const productSchema = new Schema({
   category: { type: String, required: true },
   categoryAr: { type: String, required: true },
   image: { type: String, default: "" },
+  logoBg: { type: String, required: true, default: "#ffffff" },
   price: { type: Number, required: true, min: 0 },
   change: { type: Number, default: 0 },
   priceUpdatedAt: { type: Date, default: null },

@@ -6,10 +6,11 @@ import { useState } from "react";
 type CompanyLogoProps = {
   src: string;
   name: string;
+  logoBg: string;
   className: string;
 };
 
-export function CompanyLogo({ src, name, className }: CompanyLogoProps) {
+export function CompanyLogo({ src, name, logoBg, className }: CompanyLogoProps) {
   const [failedSrc, setFailedSrc] = useState("");
   const failed = failedSrc === src;
   const initials = name.trim().split(/\s+/).filter(Boolean).map((word) => word[0]).slice(0, 3).join("");
@@ -18,7 +19,8 @@ export function CompanyLogo({ src, name, className }: CompanyLogoProps) {
     <div
       role="img"
       aria-label={name}
-      className={`flex shrink-0 items-center justify-center overflow-hidden border border-[var(--line)] bg-white ${className}`}
+      style={{ backgroundColor: logoBg }}
+      className={`flex shrink-0 items-center justify-center overflow-hidden border border-[var(--line)] ${className}`}
     >
       {src && !failed ? (
         <Image
@@ -27,7 +29,7 @@ export function CompanyLogo({ src, name, className }: CompanyLogoProps) {
           aria-hidden="true"
           width={96}
           height={96}
-          className="h-full w-full object-contain p-1"
+          className="h-full w-full object-contain"
           onError={() => setFailedSrc(src)}
         />
       ) : (

@@ -1,11 +1,13 @@
 "use client";
 
 import { accountCopy } from "@/data/account-copy";
+import { CompanyLogo } from "@/components/CompanyLogo";
 import { useStore } from "@/lib/store";
 
 export type AdminOrder = {
   id: string;
   type: "gift" | "topup";
+  company: { ticker: string; name: string; nameAr: string; image: string; logoBg: string } | null;
   paymentMethod: "wallet" | "card" | "both" | "demo";
   status: "pending" | "paid" | "cancelled";
   total: number;
@@ -25,6 +27,7 @@ export function AdminOrdersClient({ orders }: { orders: AdminOrder[] }) {
   const { lang } = useStore();
   const account = accountCopy[lang] as typeof accountCopy[typeof lang] & { adminOrders: AdminOrdersLabels };
   const labels = account.adminOrders;
+  const companyName = (order: AdminOrder) => order.company ? lang === "ar" ? order.company.nameAr : order.company.name : "";
 
   function money(value: number) {
     return new Intl.NumberFormat(lang === "ar" ? "ar-KW" : "en-KW", {
@@ -85,7 +88,15 @@ export function AdminOrdersClient({ orders }: { orders: AdminOrder[] }) {
                 {orders.map(order => (
                   <tr key={order.id} className="transition-colors hover:bg-[var(--soft)]/60">
                     <td dir="ltr" className="px-5 py-4 font-mono text-xs">{order.id}</td>
-                    <td className="px-5 py-4">{orderTypeLabel(order.type)}</td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        {order.company && <CompanyLogo src={order.company.image} name={companyName(order)} logoBg={order.company.logoBg} className="h-10 w-10 rounded-lg"/>}
+                        <div>
+                          <p>{orderTypeLabel(order.type)}</p>
+                          {order.company && <p className="mt-0.5 text-xs text-[var(--muted)]">{companyName(order)}</p>}
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-5 py-4">{paymentLabel(order.paymentMethod)}</td>
                     <td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusClass[order.status]}`}>{labels.statuses[order.status]}</span></td>
                     <td dir="ltr" className="px-5 py-4 font-semibold">{money(order.total)}</td>
@@ -106,7 +117,16 @@ export function AdminOrdersClient({ orders }: { orders: AdminOrder[] }) {
                   <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusClass[order.status]}`}>{labels.statuses[order.status]}</span>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
-                  <div><p className="text-[var(--muted)]">{labels.columns.type}</p><p className="mt-1 font-medium">{orderTypeLabel(order.type)}</p></div>
+                  <div>
+                    <p className="text-[var(--muted)]">{labels.columns.type}</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      {order.company && <CompanyLogo src={order.company.image} name={companyName(order)} logoBg={order.company.logoBg} className="h-9 w-9 rounded-lg"/>}
+                      <div className="min-w-0">
+                        <p className="font-medium">{orderTypeLabel(order.type)}</p>
+                        {order.company && <p className="truncate text-[10px] text-[var(--muted)]">{companyName(order)}</p>}
+                      </div>
+                    </div>
+                  </div>
                   <div><p className="text-[var(--muted)]">{labels.columns.payment}</p><p className="mt-1 font-medium">{paymentLabel(order.paymentMethod)}</p></div>
                   <div><p className="text-[var(--muted)]">{labels.columns.total}</p><p dir="ltr" className="mt-1 text-start font-semibold">{money(order.total)}</p></div>
                   <div><p className="text-[var(--muted)]">{labels.columns.date}</p><time className="mt-1 block font-medium" dateTime={order.createdAt}>{date(order.createdAt)}</time></div>

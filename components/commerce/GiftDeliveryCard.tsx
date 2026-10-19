@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { Check, Copy, Download, Share2 } from "lucide-react";
+import { CompanyLogo } from "@/components/CompanyLogo";
 import type { GiftRecord } from "./shared";
 import { useCommerce } from "./shared";
 
@@ -88,6 +89,30 @@ export function GiftDeliveryCard({ gift, actions = true }: { gift: ShareableGift
     context.beginPath();
     context.arc(1050, 135, 210, 0, Math.PI * 2);
     context.stroke();
+    if (gift.company.image) {
+      const logoImage = new Image();
+      logoImage.src = gift.company.image;
+      await new Promise<void>(resolve => {
+        logoImage.onload = () => resolve();
+        logoImage.onerror = () => resolve();
+      });
+      if (logoImage.complete && logoImage.naturalWidth) {
+        const logoSize = 120;
+        const logoX = lang === "ar" ? 72 : 1008;
+        const logoY = 40;
+        context.fillStyle = gift.company.logoBg;
+        context.beginPath();
+        context.roundRect(logoX, logoY, logoSize, logoSize, 14);
+        context.fill();
+        context.strokeStyle = `${theme.accent}88`;
+        context.lineWidth = 2;
+        context.stroke();
+        const scale = Math.min(logoSize / logoImage.naturalWidth, logoSize / logoImage.naturalHeight);
+        const width = logoImage.naturalWidth * scale;
+        const height = logoImage.naturalHeight * scale;
+        context.drawImage(logoImage, logoX + (logoSize - width) / 2, logoY + (logoSize - height) / 2, width, height);
+      }
+    }
     context.fillStyle = theme.accent;
     context.font = "600 25px sans-serif";
     context.fillText(copy.brandMark, textX, 82);
@@ -131,8 +156,13 @@ export function GiftDeliveryCard({ gift, actions = true }: { gift: ShareableGift
         <p className="relative text-[10px] font-bold uppercase tracking-[.2em] opacity-70">{copy.brandMark}</p>
         <div className="relative mt-5 grid items-start gap-5 sm:grid-cols-[minmax(0,1fr)_124px]">
           <div className="min-w-0">
-            <h2 className="font-display text-2xl font-semibold leading-tight sm:text-3xl">{companyName}</h2>
-            <p dir="ltr" className="mt-1 text-xs tracking-widest opacity-70">{gift.company.ticker}</p>
+            <div className="flex min-w-0 items-center gap-3">
+              <CompanyLogo src={gift.company.image} name={companyName} logoBg={gift.company.logoBg} className="h-14 w-14 rounded-xl"/>
+              <div className="min-w-0">
+                <h2 className="font-display text-2xl font-semibold leading-tight sm:text-3xl">{companyName}</h2>
+                <p dir="ltr" className="mt-1 text-xs tracking-widest opacity-70">{gift.company.ticker}</p>
+              </div>
+            </div>
             <div className="mt-5 flex flex-wrap items-end gap-x-7 gap-y-3 border-t border-current/15 pt-4">
               <div><p className="text-[10px] uppercase tracking-widest opacity-65">{copy.gifts.shares}</p><p className="font-display mt-1 text-2xl font-semibold">{gift.shares}</p></div>
             </div>

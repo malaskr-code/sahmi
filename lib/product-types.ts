@@ -8,6 +8,7 @@ export type Product = {
   descriptionAr: string;
   ticker: string;
   image: string;
+  logoBg: string;
   price: number;
   change: number;
   priceUpdatedAt: string | null;

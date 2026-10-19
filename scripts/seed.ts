@@ -6,14 +6,20 @@ async function main() {
   const db = await connectDB();
   try {
     await Product.init();
-    const result = await Product.bulkWrite(seedProducts.map(product => ({
-      updateOne: {
-        filter: { ticker: product.ticker },
-        // Re-running the seed must not reset live prices or existing company edits.
-        update: { $setOnInsert: { ...product, image: "", active: true, priceUpdatedAt: null, createdAt: new Date() } },
-        upsert: true,
-      },
-    })));
+    const result = await Product.bulkWrite(seedProducts.map(product => {
+      const { logoBg, ...insertFields } = product;
+      return {
+        updateOne: {
+          filter: { ticker: product.ticker },
+          // Re-running the seed updates only logo metadata on existing products.
+          update: {
+            $set: { logoBg },
+            $setOnInsert: { ...insertFields, image: "", active: true, priceUpdatedAt: null, createdAt: new Date() },
+          },
+          upsert: true,
+        },
+      };
+    }));
     console.log(`Seed complete: ${result.upsertedCount} inserted; ${await Product.countDocuments()} total companies.`);
     console.log(`Tickers: ${seedProducts.map(p => p.ticker).join(", ")}`);
   } finally {

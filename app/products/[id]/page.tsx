@@ -87,7 +87,7 @@ export default function ProductDetailPage() {
       </Link>
       <div className="mt-6 grid gap-7 lg:grid-cols-[1fr_420px]">
         <div className="card h-fit overflow-hidden p-7 md:p-10">
-          <CompanyLogo src={product.image} name={name} className="h-16 w-16 rounded-xl"/>
+          <CompanyLogo src={product.image} name={name} logoBg={product.logoBg} className="h-16 w-16 rounded-xl"/>
           <p className="mt-8 text-xs font-bold uppercase tracking-[.16em] text-[var(--gold-dark)]">
             {lang === "ar" ? product.sectorAr : t.common.sectors[product.sector as keyof typeof t.common.sectors] ?? product.sector}
           </p>

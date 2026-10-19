@@ -3,12 +3,13 @@ import { connectDB } from "./db";
 import ProductModel from "../models/Product";
 import { refreshPrices } from "./price-refresh";
 import type { Product } from "./product-types";
-import { companyLogoFor } from "./company-logos";
+import { companyLogoFor, companyLogoBgFor } from "./company-logos";
 
 // Map database categories to the existing view contract to preserve the UI.
 function serialize(row: Record<string, unknown>): Product {
   return {
     id: String(row.slug), ticker: String(row.ticker), image: companyLogoFor(String(row.ticker), String(row.image ?? "")),
+    logoBg: String(row.logoBg ?? companyLogoBgFor(String(row.ticker))),
     name: String(row.name), nameAr: String(row.nameAr),
     sector: String(row.category), sectorAr: String(row.categoryAr),
     description: String(row.description), descriptionAr: String(row.descriptionAr),
