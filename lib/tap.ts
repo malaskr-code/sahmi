@@ -83,7 +83,6 @@ export async function createTapCharge(input: {
       customer_initiated: true,
       threeDSecure: true,
       description: input.description,
-      order: { id: input.orderId },
       metadata: { udf1: input.orderId },
       reference: {
         transaction: input.orderId,

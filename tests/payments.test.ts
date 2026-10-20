@@ -162,6 +162,7 @@ test("Tap creates a hosted KWD charge with the saved order reference", async () 
     assert.ok(body);
     assert.equal(body.amount, 1.25);
     assert.equal(body.currency, "KWD");
+    assert.equal(body.order, undefined);
     assert.deepEqual(body.source, { id: "src_all" });
     assert.deepEqual(body.reference, {
       transaction: "507f1f77bcf86cd799439011",
