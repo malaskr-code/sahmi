@@ -7,7 +7,8 @@ export type PaymentErrorCode =
   | "minimumTopup"
   | "priceQuoteExpired"
   | "walletBalanceChanged"
-  | "stripeError"
+  | "tapError"
+  | "paymentNotCompleted"
   | "invalidGift"
   | "insufficientWallet"
   | "productUnavailable"
@@ -32,7 +33,8 @@ const messages: Record<"en" | "ar", Record<PaymentErrorCode, string>> = {
     minimumTopup: "The minimum wallet top-up is 1.000 KWD.",
     priceQuoteExpired: "The price was updated. Please review the new total.",
     walletBalanceChanged: "Your wallet balance changed. Please review the payment.",
-    stripeError: "Payment couldn't start. Please try again.",
+    tapError: "Payment couldn't start. Please try again.",
+    paymentNotCompleted: "The payment was not completed. Please try again.",
     invalidGift: "Please check the recipient, message, share count, and card theme.",
     insufficientWallet: "Your wallet balance changed. Please review the payment.",
     productUnavailable: "This company isn't available right now.",
@@ -49,7 +51,8 @@ const messages: Record<"en" | "ar", Record<PaymentErrorCode, string>> = {
     minimumTopup: "الحد الأدنى لشحن المحفظة هو 1.000 د.ك.",
     priceQuoteExpired: "تم تحديث السعر. يرجى مراجعة الإجمالي الجديد.",
     walletBalanceChanged: "تغيّر رصيد محفظتك. يرجى مراجعة طريقة الدفع.",
-    stripeError: "تعذّر بدء الدفع. يرجى المحاولة مرة أخرى.",
+    tapError: "تعذّر بدء الدفع. يرجى المحاولة مرة أخرى.",
+    paymentNotCompleted: "لم يكتمل الدفع. يرجى المحاولة مرة أخرى.",
     invalidGift: "تحقق من اسم المستلم والرسالة وعدد الأسهم وتصميم البطاقة.",
     insufficientWallet: "تغيّر رصيد محفظتك. يرجى مراجعة طريقة الدفع.",
     productUnavailable: "هذه الشركة غير متاحة الآن.",

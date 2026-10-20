@@ -8,7 +8,7 @@ Sahmi lets people give shares of companies listed on Boursa Kuwait as gifts.
 - Tailwind CSS
 - MongoDB with Mongoose
 - JWT authentication in secure cookies
-- Stripe Checkout
+- Tap hosted checkout
 - oanor Kuwait Stock API
 
 ## Run locally
@@ -32,10 +32,7 @@ Set these in `.env.local` for development and in the hosting provider's environm
 - `KUWAIT_STOCK_API_KEY` — oanor Kuwait Stock API key
 - `JWT_SECRET` — signing key for authentication and price quotes
 - `ADMIN_EMAIL` — email address that receives the admin role
-- `STRIPE_SECRET_KEY` — Stripe secret API key
+- `TAP_SECRET_KEY` — Tap secret API key (use a test key while testing)
 - `CODE_SECRET` — encryption key for gift codes
-- `STRIPE_WEBHOOK_SECRET` — Stripe webhook signing secret, if a webhook handler is configured
 
-Keep all secrets server-side. Use Stripe test-mode keys while testing. Sahmi shows checkout totals in KWD and sends card charges to Stripe in USD at the configured fixed rate of 1 KWD = 3.25 USD.
-
-For a Stripe test checkout, use card number `4242 4242 4242 4242`, any future expiry date, and any CVC.
+Keep all secrets server-side. Sahmi uses Tap's hosted payment page and submits card charges in KWD. The `/api/tap/webhook` endpoint verifies Tap's documented `hashstring` using the Tap secret API key before updating an order.

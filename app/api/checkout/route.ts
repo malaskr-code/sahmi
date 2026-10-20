@@ -4,7 +4,7 @@ import { readAuthBody, sameOrigin } from "@/lib/auth-response";
 import { connectDB } from "@/lib/db";
 import { prepareGiftPriceQuote, startGiftCheckout, startTopupCheckout } from "@/lib/checkout-service";
 import { PaymentError, paymentJson, paymentServerError } from "@/lib/payment-errors";
-import { StripeConfigurationError } from "@/lib/stripe";
+import { TapConfigurationError } from "@/lib/tap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +19,7 @@ export async function POST(request: Request) {
   try {
     await connectDB();
     const origin = new URL(request.url).origin;
+    const langCode = request.headers.get("accept-language")?.toLowerCase().startsWith("ar") ? "ar" : "en";
     if (body.action === "quote") {
       return Response.json(
         { ok: true, ...await prepareGiftPriceQuote(user.id, body) },
@@ -26,11 +27,11 @@ export async function POST(request: Request) {
       );
     }
     if (body.action === "topup") {
-      const result = await startTopupCheckout(user, body.amount, origin);
+      const result = await startTopupCheckout(user, body.amount, origin, langCode);
       return Response.json({ ok: true, ...result }, { headers: { "Cache-Control": "no-store" } });
     }
     if (body.action === "gift") {
-      const result = await startGiftCheckout(user, body, origin);
+      const result = await startGiftCheckout(user, body, origin, langCode);
       return Response.json({
         ok: true,
         ...result,
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
     return paymentJson(request, 400, "invalidRequest");
   } catch (error) {
     if (error instanceof PaymentError) return paymentJson(request, error.status, error.code);
-    if (error instanceof StripeConfigurationError) return paymentJson(request, 503, "stripeError");
+    if (error instanceof TapConfigurationError) return paymentJson(request, 503, "tapError");
     console.error("Unable to create a checkout session.", error instanceof Error ? error.name : "unknown");
     if (error instanceof mongoose.Error.ValidationError) return paymentJson(request, 400, "invalidRequest");
     return paymentServerError(request);

@@ -6,19 +6,18 @@ import Product from "@/models/Product";
 import Transaction from "@/models/Transaction";
 import User from "@/models/User";
 import { CARD_THEME_IDS, type CardThemeId } from "@/data/cardThemes";
-import { MIN_CARD_PAYMENT_FILS, SERVICE_FEE_FILS, filsToKwd, kwdFilsToUsdCents, kwdToFils, parseTopupFils, USD_CENTS_PER_KWD } from "@/lib/money";
+import { MIN_CARD_PAYMENT_FILS, SERVICE_FEE_FILS, filsToKwd, kwdToFils, parseTopupFils } from "@/lib/money";
 import { createGiftCode, encryptGiftCode, hashGiftCode } from "@/lib/gift-codes";
-import { getStripeClient } from "@/lib/stripe";
+import { assertTapConfigured, createTapCharge, retrieveTapCharge, TapConfigurationError, type TapChargeResponse } from "@/lib/tap";
 import { readReservedWalletFils, readWalletFils } from "@/lib/wallet";
 import { PaymentError } from "@/lib/payment-errors";
 import { connectDB } from "@/lib/db";
 import { signPriceQuote, verifyPriceQuote } from "@/lib/price-quote";
 import { findCheckoutProduct } from "@/lib/checkout-products";
-import Stripe from "stripe";
 
 const CHECKOUT_RESERVATION_SECONDS = 31 * 60;
 const PRICE_LOCK_MS = 10 * 60 * 1000;
-const MAX_STRIPE_AMOUNT_FILS = 99_999_990;
+const MAX_PAYMENT_AMOUNT_FILS = 99_999_990;
 
 type PaymentMode = "wallet" | "card" | "both" | "demo";
 
@@ -65,12 +64,6 @@ function walletContributionFils(payment: PaymentMode, totalFils: number, availab
   return remainingFils > 0 && remainingFils < MIN_CARD_PAYMENT_FILS
     ? totalFils - MIN_CARD_PAYMENT_FILS
     : walletFils;
-}
-
-function orderUsdChargeCents(order: { paidByCardUsdCents?: number | null }, cardFils: number) {
-  const stored = order.paidByCardUsdCents;
-  if (Number.isSafeInteger(stored) && (cardFils === 0 || Number(stored) > 0)) return Number(stored);
-  return kwdFilsToUsdCents(cardFils);
 }
 
 async function lockWallet(userId: string, session: ClientSession) {
@@ -157,8 +150,7 @@ async function finalizeDemoOrder(orderId: Types.ObjectId, session: ClientSession
   if (
     subtotalFils + sumKwdFils(order.fee) !== sumKwdFils(order.total) ||
     sumKwdFils(order.paidFromWallet) !== 0 ||
-    sumKwdFils(order.paidByCard) !== 0 ||
-    order.paidByCardUsdCents !== 0
+    sumKwdFils(order.paidByCard) !== 0
   ) throw new PaymentError("checkoutUnavailable", 409);
 
   const gift = await createGiftForOrder(order, session);
@@ -170,7 +162,7 @@ async function finalizeDemoOrder(orderId: Types.ObjectId, session: ClientSession
 async function finalizePendingOrder(
   orderId: Types.ObjectId,
   session: ClientSession,
-  options: { cardChargeUsdCents?: number } = {},
+  options: { cardChargeFils?: number } = {},
 ) {
   const order = await Order.findOne({ _id: orderId, status: "pending" }).session(session);
   if (!order) return null;
@@ -178,13 +170,11 @@ async function finalizePendingOrder(
   await lockWallet(String(order.user), session);
 
   if (order.type === "topup") {
-    const cardChargeUsdCents = options.cardChargeUsdCents;
+    const cardChargeFils = options.cardChargeFils;
     const topupFils = sumKwdFils(order.total);
-    const expectedUsdCents = orderUsdChargeCents(order, sumKwdFils(order.paidByCard));
     if (
       sumKwdFils(order.paidByCard) !== topupFils ||
-      expectedUsdCents !== kwdFilsToUsdCents(topupFils) ||
-      cardChargeUsdCents !== expectedUsdCents
+      cardChargeFils !== topupFils
     ) throw new Error("Top-up amount does not match the paid order.");
     await Transaction.create([{
       user: order.user,
@@ -211,10 +201,8 @@ async function finalizePendingOrder(
   const feeFils = sumKwdFils(order.fee);
   const totalFils = subtotalFils + feeFils;
   const expectedCardFils = sumKwdFils(order.paidByCard);
-  const expectedUsdCents = orderUsdChargeCents(order, expectedCardFils);
   if (
-    (expectedCardFils === 0 ? options.cardChargeUsdCents !== undefined && options.cardChargeUsdCents !== 0 : options.cardChargeUsdCents !== expectedUsdCents) ||
-    expectedUsdCents !== kwdFilsToUsdCents(expectedCardFils) ||
+    (expectedCardFils === 0 ? options.cardChargeFils !== undefined && options.cardChargeFils !== 0 : options.cardChargeFils !== expectedCardFils) ||
     totalFils !== sumKwdFils(order.total) ||
     sumKwdFils(order.paidFromWallet) + expectedCardFils !== totalFils
   ) throw new Error("Gift payment amount does not match the pending order.");
@@ -254,16 +242,16 @@ export async function prepareGiftPriceQuote(userId: string, input: unknown) {
   const unitPriceFils = sumKwdFils(Number(product.price));
   const subtotalFils = unitPriceFils * shares;
   const totalFils = subtotalFils + SERVICE_FEE_FILS;
-  if (!Number.isSafeInteger(totalFils) || totalFils > MAX_STRIPE_AMOUNT_FILS) throw new PaymentError("invalidAmount");
+  if (!Number.isSafeInteger(totalFils) || totalFils > MAX_PAYMENT_AMOUNT_FILS) throw new PaymentError("invalidAmount");
   const [balanceFils, reservedFils] = payment === "demo"
     ? [0, 0]
     : await Promise.all([readWalletFils(userId), readReservedWalletFils(userId)]);
   const availableFils = Math.max(0, balanceFils - reservedFils);
   if (payment === "wallet" && availableFils < totalFils) throw new PaymentError("insufficientWallet");
   const walletFils = walletContributionFils(payment, totalFils, availableFils);
-  const cardChargeUsdCents = payment === "demo" ? 0 : kwdFilsToUsdCents(totalFils - walletFils);
+  const cardChargeFils = payment === "demo" ? 0 : totalFils - walletFils;
   const issuedAt = Date.now();
-  const quoteToken = signPriceQuote({ userId, productId, shares, payment, unitPriceFils, walletFils, cardChargeUsdCents, issuedAt });
+  const quoteToken = signPriceQuote({ userId, productId, shares, payment, unitPriceFils, walletFils, cardChargeFils, issuedAt });
   return {
     quoteToken,
     quote: {
@@ -280,81 +268,51 @@ export async function prepareGiftPriceQuote(userId: string, input: unknown) {
   };
 }
 
-async function saveStripeSession(
+async function saveTapCharge(
   orderId: Types.ObjectId,
-  user: { id: string; email: string },
-  amountUsdCents: number,
+  user: { id: string; email: string; name?: string },
+  amountFils: number,
   origin: string,
   description: string,
+  langCode: "en" | "ar",
 ) {
-  if (!Number.isSafeInteger(amountUsdCents) || amountUsdCents < 50 || amountUsdCents > 99_999_999) {
+  if (!Number.isSafeInteger(amountFils) || amountFils < 100 || amountFils > MAX_PAYMENT_AMOUNT_FILS) {
     throw new PaymentError("invalidAmount");
   }
-  const stripe = getStripeClient();
-  const expiresAt = Math.floor(Date.now() / 1000) + CHECKOUT_RESERVATION_SECONDS;
-  const order = await Order.findById(orderId).select("type").lean();
-  if (!order) throw new PaymentError("checkoutUnavailable", 500);
-  const kind = order.type === "topup" ? "Wallet top-up" : "Gift purchase";
-  const cancelKind = order.type === "topup" ? "&kind=topup" : "";
-  let checkoutSession: Awaited<ReturnType<typeof stripe.checkout.sessions.create>> | null = null;
+  assertTapConfigured();
+  let checkout: { id: string; url: string };
   try {
-    checkoutSession = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: [{
-        quantity: 1,
-        price_data: {
-          currency: "usd",
-          unit_amount: amountUsdCents,
-          product_data: { name: kind, description },
-        },
-      }],
-      customer_email: user.email,
-      client_reference_id: String(orderId),
-      metadata: { orderId: String(orderId), userId: user.id },
-      payment_intent_data: { metadata: { orderId: String(orderId), userId: user.id } },
-      success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/checkout/cancel?session_id={CHECKOUT_SESSION_ID}${cancelKind}`,
-      expires_at: expiresAt,
-      locale: "auto",
-    }, { idempotencyKey: `sahmi-checkout-${orderId}` });
-
-    if (!checkoutSession.url) throw new PaymentError("stripeError", 502);
-    const saved = await Order.updateOne(
-      { _id: orderId, user: new Types.ObjectId(user.id), status: "pending" },
-      {
-        $set: {
-          stripeSessionId: checkoutSession.id,
-          reservationExpiresAt: new Date(expiresAt * 1000),
-        },
-      },
-    );
-    if (saved.matchedCount !== 1) throw new PaymentError("checkoutUnavailable", 409);
-    return { url: checkoutSession.url, sessionId: checkoutSession.id };
+    checkout = await createTapCharge({
+      orderId: String(orderId),
+      amountFils,
+      customerName: user.name || user.email.split("@")[0] || "Sahmi customer",
+      customerEmail: user.email,
+      description,
+      returnUrl: `${origin}/checkout/success?order_id=${encodeURIComponent(String(orderId))}`,
+      webhookUrl: `${origin}/api/tap/webhook`,
+      langCode,
+    });
   } catch (error) {
-    if (checkoutSession?.id) {
-      try { await stripe.checkout.sessions.expire(checkoutSession.id); } catch { /* best-effort cleanup; no payment URL is returned */ }
-    }
-    await Order.updateOne({ _id: orderId, status: "pending" }, { $set: { status: "cancelled" } }).catch(() => undefined);
-    if (error instanceof Stripe.errors.StripeError) {
-      console.error("Stripe Checkout session creation failed.", {
-        type: error.type,
-        code: error.code ?? null,
-        statusCode: error.statusCode ?? null,
-        param: error.param ?? null,
-      });
-      throw new PaymentError("stripeError", 502);
-    }
-    throw error;
+    if (error instanceof TapConfigurationError) throw error;
+    console.error("Tap hosted checkout creation failed.", error instanceof Error ? error.name : "unknown");
+    throw new PaymentError("tapError", 502);
   }
+  const expiresAt = new Date(Date.now() + CHECKOUT_RESERVATION_SECONDS * 1000);
+  const saved = await Order.updateOne(
+    { _id: orderId, user: new Types.ObjectId(user.id), status: "pending" },
+    { $set: { tapChargeId: checkout.id, reservationExpiresAt: expiresAt } },
+  );
+  if (saved.matchedCount !== 1) throw new PaymentError("checkoutUnavailable", 409);
+  return { url: checkout.url, tapId: checkout.id };
 }
 
-export async function startTopupCheckout(user: { id: string; email: string }, amount: unknown, origin: string) {
+export async function startTopupCheckout(user: { id: string; email: string; name?: string }, amount: unknown, origin: string, langCode: "en" | "ar") {
   const amountFils = parseTopupFils(amount);
-  if (amountFils === null || amountFils > MAX_STRIPE_AMOUNT_FILS) {
+  if (amountFils === null || amountFils > MAX_PAYMENT_AMOUNT_FILS) {
     if (typeof amount === "number" && amount >= 0 && amount < 1) throw new PaymentError("minimumTopup");
     throw new PaymentError("invalidAmount");
   }
-  getStripeClient();
+  assertTapConfigured();
   await connectDB();
   const order = await Order.create({
     user: new Types.ObjectId(user.id),
@@ -364,22 +322,22 @@ export async function startTopupCheckout(user: { id: string; email: string }, am
     total: filsToKwd(amountFils),
     paidFromWallet: 0,
     paidByCard: filsToKwd(amountFils),
-    paidByCardUsdCents: kwdFilsToUsdCents(amountFils),
     paymentMethod: "card",
     status: "pending",
     reservationExpiresAt: new Date(Date.now() + CHECKOUT_RESERVATION_SECONDS * 1000),
   });
-  const checkout = await saveStripeSession(
+  const checkout = await saveTapCharge(
     order._id,
     user,
-    kwdFilsToUsdCents(amountFils),
+    amountFils,
     origin,
-    `${filsToKwd(amountFils).toFixed(3)} KWD added to the Sahmi wallet after payment. The Stripe charge uses the fixed rate of 1 KWD = ${USD_CENTS_PER_KWD / 100} USD.`,
+    `${filsToKwd(amountFils).toFixed(3)} KWD wallet top-up.`,
+    langCode,
   );
   return { orderId: String(order._id), ...checkout };
 }
 
-export async function startGiftCheckout(user: { id: string; email: string }, input: unknown, origin: string) {
+export async function startGiftCheckout(user: { id: string; email: string; name?: string }, input: unknown, origin: string, langCode: "en" | "ar") {
   const gift = getGiftInput(input);
   const priceQuote = verifyPriceQuote(gift.quoteToken, {
     userId: user.id, productId: gift.productId, shares: gift.shares, payment: gift.payment,
@@ -392,10 +350,11 @@ export async function startGiftCheckout(user: { id: string; email: string }, inp
   const totalFils = subtotalFils + SERVICE_FEE_FILS;
   const cardFilsFromQuote = totalFils - priceQuote.walletFils;
   if (gift.payment === "demo"
-    ? priceQuote.walletFils !== 0 || priceQuote.cardChargeUsdCents !== 0
-    : kwdFilsToUsdCents(cardFilsFromQuote) !== priceQuote.cardChargeUsdCents
+    ? priceQuote.walletFils !== 0 || priceQuote.cardChargeFils !== 0
+    : cardFilsFromQuote !== priceQuote.cardChargeFils
   ) throw new PaymentError("priceQuoteExpired", 409);
-  if (!Number.isSafeInteger(totalFils) || totalFils > MAX_STRIPE_AMOUNT_FILS) throw new PaymentError("invalidAmount");
+  if (!Number.isSafeInteger(totalFils) || totalFils > MAX_PAYMENT_AMOUNT_FILS) throw new PaymentError("invalidAmount");
+  if (priceQuote.cardChargeFils > 0) assertTapConfigured();
 
   const orderId = new Types.ObjectId();
   const startedAt = new Date(priceQuote.issuedAt);
@@ -431,7 +390,6 @@ export async function startGiftCheckout(user: { id: string; email: string }, inp
       total: filsToKwd(totalFils),
       paidFromWallet: filsToKwd(walletFils),
       paidByCard: filsToKwd(cardFils),
-      paidByCardUsdCents: priceQuote.cardChargeUsdCents,
       paymentMethod: gift.payment,
       priceLockedAt: startedAt,
       priceLockExpiresAt,
@@ -452,16 +410,18 @@ export async function startGiftCheckout(user: { id: string; email: string }, inp
   });
 
   if (computed.instant) return { orderId: computed.orderId, result: computed.result, url: null };
-  const checkout = await saveStripeSession(
+  const checkout = await saveTapCharge(
     computed.orderId,
     user,
-    priceQuote.cardChargeUsdCents,
+    computed.cardFils,
     origin,
-    `Gift shares from ${String(product.name)}; the service fee is included. The Stripe charge uses the fixed rate of 1 KWD = ${USD_CENTS_PER_KWD / 100} USD.`,
+    `Gift shares from ${String(product.name)}; the service fee is included.`,
+    langCode,
   );
   return {
     orderId: String(computed.orderId),
     url: checkout.url,
+    tapId: checkout.tapId,
     quote: {
       shares: gift.shares,
       unitPrice: filsToKwd(unitPriceFils),
@@ -476,42 +436,88 @@ export async function startGiftCheckout(user: { id: string; email: string }, inp
   };
 }
 
-export async function completePaidStripeOrder(sessionId: string, userId: string) {
-  if (!sessionId || sessionId.length > 255) throw new PaymentError("sessionInvalid", 400);
-  await connectDB();
-  const existing = await Order.findOne({ stripeSessionId: sessionId, user: userId }).select("_id type status").lean();
-  if (!existing) throw new PaymentError("sessionInvalid", 404);
-  if (existing.status === "paid") return getPaidOrderResult(String(existing._id), userId);
+const failedTapStatuses = new Set(["FAILED", "DECLINED", "ABANDONED", "CANCELLED", "VOIDED", "EXPIRED", "TIMEDOUT"]);
 
-  const stripe = getStripeClient();
-  const paidSession = await stripe.checkout.sessions.retrieve(sessionId);
+async function finalizeTapCharge(order: {
+  _id: Types.ObjectId;
+  user: Types.ObjectId;
+  type: "gift" | "topup";
+  status: string;
+  total: number;
+  paidByCard: number;
+  tapChargeId?: string;
+}, charge: TapChargeResponse) {
+  const orderId = String(order._id);
   if (
-    paidSession.mode !== "payment" ||
-    paidSession.status !== "complete" ||
-    paidSession.payment_status !== "paid" ||
-    paidSession.currency?.toLowerCase() !== "usd" ||
-    paidSession.client_reference_id !== String(existing._id) ||
-    paidSession.metadata?.orderId !== String(existing._id) ||
-    paidSession.metadata?.userId !== userId
-  ) throw new PaymentError("sessionPending", 409);
+    charge.id !== order.tapChargeId ||
+    charge.reference?.order !== orderId ||
+    charge.currency !== "KWD"
+  ) throw new PaymentError("sessionInvalid", 409);
 
-  const order = await Order.findById(existing._id).select("paidByCard paidByCardUsdCents total type").lean();
-  if (!order || paidSession.amount_total !== orderUsdChargeCents(order, sumKwdFils(order.type === "topup" ? order.total : order.paidByCard))) {
+  const chargeAmount = typeof charge.amount === "number" ? charge.amount : Number(charge.amount);
+  let chargeFils: number;
+  try {
+    chargeFils = kwdToFils(chargeAmount);
+  } catch {
     throw new PaymentError("sessionInvalid", 409);
+  }
+  const expectedFils = sumKwdFils(order.type === "topup" ? order.total : order.paidByCard);
+  if (chargeFils !== expectedFils || expectedFils < 100) throw new PaymentError("sessionInvalid", 409);
+
+  if (order.status === "paid") return getPaidOrderResult(orderId, String(order.user));
+  if (order.status !== "pending") throw new PaymentError("sessionInvalid", 409);
+  if (charge.status !== "CAPTURED") {
+    if (typeof charge.status === "string" && failedTapStatuses.has(charge.status)) {
+      await Order.updateOne({ _id: order._id, status: "pending" }, { $set: { status: "cancelled" } });
+      throw new PaymentError("paymentNotCompleted", 409);
+    }
+    throw new PaymentError("sessionPending", 409);
   }
 
   const session = await mongoose.startSession();
   try {
     let result: Awaited<ReturnType<typeof finalizePendingOrder>> = null;
     await session.withTransaction(async () => {
-      result = await finalizePendingOrder(existing._id, session, { cardChargeUsdCents: paidSession.amount_total ?? 0 });
+      result = await finalizePendingOrder(order._id, session, { cardChargeFils: chargeFils });
     });
     if (result) return result;
   } finally {
     await session.endSession();
   }
+  return getPaidOrderResult(orderId, String(order.user));
+}
 
-  return getPaidOrderResult(String(existing._id), userId);
+export async function completePaidTapOrder(tapId: string, userId: string, expectedOrderId?: string) {
+  if (!tapId || tapId.length > 120) throw new PaymentError("sessionInvalid", 400);
+  if (expectedOrderId && !mongoose.isValidObjectId(expectedOrderId)) throw new PaymentError("sessionInvalid", 400);
+  await connectDB();
+  const order = await Order.findOne({
+    tapChargeId: tapId,
+    user: userId,
+    ...(expectedOrderId ? { _id: expectedOrderId } : {}),
+  })
+    .select("_id user type status total paidByCard tapChargeId").lean();
+  if (!order) throw new PaymentError("sessionInvalid", 404);
+  if (order.status === "paid") return getPaidOrderResult(String(order._id), userId);
+  const charge = await retrieveTapCharge(tapId);
+  return finalizeTapCharge(order, charge);
+}
+
+export async function processTapWebhookCharge(tapId: string) {
+  if (!tapId || tapId.length > 120) throw new PaymentError("sessionInvalid", 400);
+  await connectDB();
+  const charge = await retrieveTapCharge(tapId);
+  const referencedOrderId = typeof charge.reference?.order === "string" ? charge.reference.order : "";
+  if (!mongoose.isValidObjectId(referencedOrderId)) throw new PaymentError("sessionInvalid", 400);
+  const order = await Order.findOne({ _id: referencedOrderId, tapChargeId: tapId })
+    .select("_id user type status total paidByCard tapChargeId").lean();
+  if (!order) throw new PaymentError("sessionInvalid", 404);
+  try {
+    await finalizeTapCharge(order, charge);
+  } catch (error) {
+    if (error instanceof PaymentError && (error.code === "sessionPending" || error.code === "paymentNotCompleted")) return;
+    throw error;
+  }
 }
 
 async function getPaidOrderResult(orderId: string, userId: string) {
@@ -530,18 +536,11 @@ export async function completeWalletOnlyOrder(orderId: string, userId: string) {
   return result;
 }
 
-export async function cancelStripeOrder(sessionId: string, userId: string) {
-  if (!sessionId || sessionId.length > 255) return "not-found" as const;
+export async function completeCheckoutOrder(orderId: string, userId: string) {
+  if (!mongoose.isValidObjectId(orderId)) throw new PaymentError("sessionInvalid", 404);
   await connectDB();
-  const order = await Order.findOne({ stripeSessionId: sessionId, user: userId }).select("_id status").lean();
-  if (!order) return "not-found" as const;
-  if (order.status === "paid") return "paid" as const;
-  if (order.status === "cancelled") return "cancelled" as const;
-
-  const stripe = getStripeClient();
-  const session = await stripe.checkout.sessions.retrieve(sessionId);
-  if (session.payment_status === "paid" || session.status === "complete") return "paid" as const;
-  if (session.status === "open") await stripe.checkout.sessions.expire(sessionId);
-  await Order.updateOne({ _id: order._id, user: userId, status: "pending" }, { $set: { status: "cancelled" } });
-  return "cancelled" as const;
+  const order = await Order.findOne({ _id: orderId, user: userId }).select("tapChargeId status").lean();
+  if (!order) throw new PaymentError("sessionInvalid", 404);
+  if (order.tapChargeId) return completePaidTapOrder(order.tapChargeId, userId, orderId);
+  return completeWalletOnlyOrder(orderId, userId);
 }

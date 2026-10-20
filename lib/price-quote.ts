@@ -4,14 +4,14 @@ import type { CardThemeId } from "@/data/cardThemes";
 const PRICE_LOCK_MS = 10 * 60 * 1000;
 
 type QuotePayload = {
-  version: 2;
+  version: 3;
   userId: string;
   productId: string;
   shares: number;
   payment: "wallet" | "card" | "both" | "demo";
   unitPriceFils: number;
   walletFils: number;
-  cardChargeUsdCents: number;
+  cardChargeFils: number;
   issuedAt: number;
 };
 
@@ -26,7 +26,7 @@ function signature(payload: string) {
 }
 
 export function signPriceQuote(input: Omit<QuotePayload, "version">) {
-  const payload = Buffer.from(JSON.stringify({ ...input, version: 2 }), "utf8").toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ ...input, version: 3 }), "utf8").toString("base64url");
   const digest = signature(payload).toString("base64url");
   return `${payload}.${digest}`;
 }
@@ -51,7 +51,7 @@ export function verifyPriceQuote(
   try {
     const payload = JSON.parse(Buffer.from(payloadText, "base64url").toString("utf8")) as QuotePayload;
     if (
-      payload.version !== 2 ||
+      payload.version !== 3 ||
       payload.userId !== expected.userId ||
       payload.productId !== expected.productId ||
       payload.shares !== expected.shares ||
@@ -60,8 +60,8 @@ export function verifyPriceQuote(
       payload.unitPriceFils <= 0 ||
       !Number.isSafeInteger(payload.walletFils) ||
       payload.walletFils < 0 ||
-      !Number.isSafeInteger(payload.cardChargeUsdCents) ||
-      payload.cardChargeUsdCents < 0 ||
+      !Number.isSafeInteger(payload.cardChargeFils) ||
+      payload.cardChargeFils < 0 ||
       !Number.isSafeInteger(payload.issuedAt) ||
       payload.issuedAt > now + 30_000 ||
       now - payload.issuedAt >= PRICE_LOCK_MS
@@ -69,7 +69,7 @@ export function verifyPriceQuote(
     return {
       unitPriceFils: payload.unitPriceFils,
       walletFils: payload.walletFils,
-      cardChargeUsdCents: payload.cardChargeUsdCents,
+      cardChargeFils: payload.cardChargeFils,
       issuedAt: payload.issuedAt,
       expiresAt: payload.issuedAt + PRICE_LOCK_MS,
     };

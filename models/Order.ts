@@ -16,12 +16,11 @@ const orderSchema = new Schema({
   total: { type: Number, required: true, min: 0 },
   paidFromWallet: { type: Number, default: 0, min: 0 },
   paidByCard: { type: Number, default: 0, min: 0 },
-  paidByCardUsdCents: { type: Number, default: 0, min: 0, validate: Number.isSafeInteger },
   paymentMethod: { type: String, enum: ["wallet", "card", "both", "demo"] },
   priceLockedAt: { type: Date, default: Date.now },
   priceLockExpiresAt: { type: Date },
   reservationExpiresAt: { type: Date },
-  stripeSessionId: { type: String, unique: true, sparse: true },
+  tapChargeId: { type: String, unique: true, sparse: true },
   status: { type: String, enum: ["pending", "paid", "cancelled"], default: "pending" },
   createdAt: { type: Date, default: Date.now },
 });
