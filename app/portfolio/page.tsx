@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth";
-import { AccountEmpty } from "@/components/AccountEmpty";
+import PortfolioClient from "@/components/commerce/PortfolioClient";
 
 export default async function PortfolioPage() {
   await requireUser("/portfolio");
-  return <AccountEmpty kind="portfolio" />;
+  return <PortfolioClient />;
 }
