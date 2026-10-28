@@ -1,9 +1,10 @@
+import type { SectorKey } from "@/data/sectors";
+
 export type Product = {
   id: string;
   name: string;
   nameAr: string;
-  sector: string;
-  sectorAr: string;
+  sectorKey: SectorKey;
   description: string;
   descriptionAr: string;
   ticker: string;

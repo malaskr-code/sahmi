@@ -13,6 +13,7 @@ import { connectDB } from "@/lib/db";
 import Product from "@/models/Product";
 import User from "@/models/User";
 import { refreshPrices } from "@/lib/price-refresh";
+import { isSectorKey, sectorDefinition } from "@/data/sectors";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -31,8 +32,7 @@ function companyFields(input: unknown) {
     nameAr: text("nameAr", 100),
     description: text("description", 1000),
     descriptionAr: text("descriptionAr", 1000),
-    sector: text("sector", 80),
-    sectorAr: text("sectorAr", 80),
+    sectorKey: text("sectorKey", 40),
     image: text("image", 2000),
     logoBg: text("logoBg", 7),
   };
@@ -43,8 +43,7 @@ function companyFields(input: unknown) {
     !fields.nameAr ||
     !fields.description ||
     !fields.descriptionAr ||
-    !fields.sector ||
-    !fields.sectorAr ||
+    !isSectorKey(fields.sectorKey) ||
     !/^#[0-9a-f]{6}$/i.test(fields.logoBg)
   ) return null;
   if (fields.image) {
@@ -57,7 +56,8 @@ function companyFields(input: unknown) {
     }
     if (!localImage && !secureUrl) return null;
   }
-  return fields;
+  const sector = sectorDefinition(fields.sectorKey)!;
+  return { ...fields, sectorKey: sector.id, category: sector.category, categoryAr: sector.categoryAr };
 }
 
 export async function GET(request: Request) {
@@ -107,8 +107,9 @@ export async function PATCH(request: Request) {
           nameAr: fields.nameAr,
           description: fields.description,
           descriptionAr: fields.descriptionAr,
-          category: fields.sector,
-          categoryAr: fields.sectorAr,
+          sectorKey: fields.sectorKey,
+          category: fields.category,
+          categoryAr: fields.categoryAr,
           image: fields.image,
           logoBg: fields.logoBg,
         },

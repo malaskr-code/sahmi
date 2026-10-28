@@ -6,6 +6,8 @@ import Product from "@/models/Product";
 import Transaction from "@/models/Transaction";
 import User from "@/models/User";
 import { companyLogoBgFor, companyLogoFor } from "@/lib/company-logos";
+import { inferSectorKey, sectorDefinition } from "@/data/sectors";
+import { isMarketOpen } from "@/lib/market-hours";
 import { decryptGiftCode, hashGiftCode, normalizeGiftCode } from "@/lib/gift-codes";
 import type {
   AdminCompany,
@@ -18,7 +20,6 @@ import type {
 
 const PAGE_SIZE = 20;
 const THEMES = ["eid", "graduation", "birthday", "newborn", "wedding", "general"] as const;
-const KUWAIT_OFFSET_MS = 3 * 60 * 60 * 1000;
 
 function kuwaitDateParts(date: Date) {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -148,10 +149,13 @@ export async function getAdminOverview() {
 
 export async function getAdminCompanies(): Promise<AdminCompany[]> {
   const products = await Product.find({})
-    .select("_id slug ticker name nameAr description descriptionAr category categoryAr image logoBg price active priceUpdatedAt")
+    .select("_id slug ticker name nameAr description descriptionAr category categoryAr sectorKey image logoBg price active priceUpdatedAt")
     .sort({ name: 1, _id: 1 })
     .lean();
-  return products.map(product => ({
+  return products.map(product => {
+    const sectorKey = inferSectorKey(product.sectorKey, product.category, product.categoryAr) ?? "technology-services";
+    const definition = sectorDefinition(sectorKey)!;
+    return {
     id: String(product._id),
     slug: String(product.slug ?? ""),
     ticker: String(product.ticker),
@@ -159,23 +163,20 @@ export async function getAdminCompanies(): Promise<AdminCompany[]> {
     nameAr: String(product.nameAr ?? ""),
     description: String(product.description ?? ""),
     descriptionAr: String(product.descriptionAr ?? ""),
-    sector: String(product.category ?? ""),
-    sectorAr: String(product.categoryAr ?? ""),
+    sectorKey,
+    sector: definition.labelEn,
+    sectorAr: definition.labelAr,
     image: companyLogoFor(String(product.ticker), String(product.image ?? "")),
     logoBg: companyLogoBgFor(String(product.ticker), String(product.logoBg ?? "")),
     price: Number(product.price ?? 0),
     active: product.active !== false,
     priceUpdatedAt: product.priceUpdatedAt ? new Date(product.priceUpdatedAt).toISOString() : null,
-  }));
+  };
+  });
 }
 
 function currentMarketStatus(now: Date): "open" | "closed" {
-  const kuwait = new Date(now.getTime() + KUWAIT_OFFSET_MS);
-  const day = kuwait.getUTCDay();
-  const minuteOfDay = kuwait.getUTCHours() * 60 + kuwait.getUTCMinutes();
-  return day >= 0 && day <= 4 && minuteOfDay >= 9 * 60 && minuteOfDay < 12 * 60 + 40
-    ? "open"
-    : "closed";
+  return isMarketOpen(now) ? "open" : "closed";
 }
 
 function monthlyLimit() {

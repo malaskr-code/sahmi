@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import { SECTORS } from "../data/sectors";
 
 const productSchema = new Schema({
   slug: { type: String, required: true, unique: true },
@@ -9,6 +10,7 @@ const productSchema = new Schema({
   ticker: { type: String, required: true, unique: true },
   category: { type: String, required: true },
   categoryAr: { type: String, required: true },
+  sectorKey: { type: String, enum: SECTORS.map(sector => sector.id), required: true },
   image: { type: String, default: "" },
   logoBg: { type: String, required: true, default: "#ffffff" },
   price: { type: Number, required: true, min: 0 },

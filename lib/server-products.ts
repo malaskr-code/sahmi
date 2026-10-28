@@ -4,14 +4,15 @@ import ProductModel from "../models/Product";
 import { refreshPrices } from "./price-refresh";
 import type { Product } from "./product-types";
 import { companyLogoFor, companyLogoBgFor } from "./company-logos";
+import { inferSectorKey, type SectorKey } from "@/data/sectors";
 
-// Map database categories to the existing view contract to preserve the UI.
 function serialize(row: Record<string, unknown>): Product {
+  const sectorKey = inferSectorKey(row.sectorKey, row.category, row.categoryAr) ?? "technology-services";
   return {
     id: String(row.slug), ticker: String(row.ticker), image: companyLogoFor(String(row.ticker), String(row.image ?? "")),
     logoBg: String(row.logoBg ?? companyLogoBgFor(String(row.ticker))),
     name: String(row.name), nameAr: String(row.nameAr),
-    sector: String(row.category), sectorAr: String(row.categoryAr),
+    sectorKey: sectorKey as SectorKey,
     description: String(row.description), descriptionAr: String(row.descriptionAr),
     price: Number(row.price), change: Number(row.change),
     priceUpdatedAt: row.priceUpdatedAt ? new Date(row.priceUpdatedAt as Date).toISOString() : null,
@@ -21,7 +22,10 @@ function serialize(row: Record<string, unknown>): Product {
 export async function readProducts(category?: string) {
   await connectDB();
   await refreshPrices();
-  const rows = await ProductModel.find({ active: true, ...(category ? { category } : {}) }).sort({ createdAt: 1, _id: 1 }).lean();
+  const categoryFilter = category
+    ? inferSectorKey(category) ? { sectorKey: inferSectorKey(category) } : { category }
+    : {};
+  const rows = await ProductModel.find({ active: true, ...categoryFilter }).sort({ createdAt: 1, _id: 1 }).lean();
   return rows.map(row => serialize(row));
 }
 

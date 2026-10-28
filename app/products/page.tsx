@@ -12,10 +12,10 @@ import {
 } from "lucide-react";
 import { useProducts } from "@/lib/use-products";
 import { ProductFeedback } from "@/components/ProductFeedback";
-import { PricesAsOf } from "@/components/PricesAsOf";
+import { MarketStatus } from "@/components/MarketStatus";
 import { ProductCard } from "@/components/ProductCard";
 import { useStore } from "@/lib/store";
-import { SECTOR_GROUPS, type SectorGroupId } from "@/data/sectorGroups";
+import { isSectorKey, SECTORS, sectorLabel, type SectorKey } from "@/data/sectors";
 
 const sectorIcons = {
   banks: Landmark,
@@ -25,30 +25,25 @@ const sectorIcons = {
   "technology-services": Monitor,
 };
 
-function isSectorGroup(value: string | null): value is SectorGroupId {
-  return SECTOR_GROUPS.some(group => group.id === value);
-}
-
 function ProductsContent() {
-  const { t } = useStore();
+  const { t, lang } = useStore();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const { products: all, loading, error, retry } = useProducts();
   const requestedSector = searchParams.get("sector");
-  const sector: SectorGroupId | "all" = isSectorGroup(requestedSector) ? requestedSector : "all";
+  const sector: SectorKey | "all" = isSectorKey(requestedSector) ? requestedSector : "all";
 
   const filtered = useMemo(() => {
-    const group = SECTOR_GROUPS.find(item => item.id === sector);
     const normalizedQuery = query.toLowerCase();
     return all.filter(product =>
-      (sector === "all" || (group?.sectors as readonly string[] | undefined)?.includes(product.sector))
-      && `${product.name} ${product.nameAr} ${product.sector} ${product.sectorAr}`.toLowerCase().includes(normalizedQuery),
+      (sector === "all" || product.sectorKey === sector)
+      && `${product.name} ${product.nameAr} ${sectorLabel(product.sectorKey, "en")} ${sectorLabel(product.sectorKey, "ar")}`.toLowerCase().includes(normalizedQuery),
     );
   }, [all, query, sector]);
 
-  function updateSector(value: SectorGroupId | "all") {
+  function updateSector(value: SectorKey | "all") {
     const nextParams = new URLSearchParams(searchParams.toString());
     if (value === "all") nextParams.delete("sector");
     else nextParams.set("sector", value);
@@ -58,11 +53,11 @@ function ProductsContent() {
 
   const chips = [
     { id: "all" as const, label: t.store.all, Icon: Building2, count: all.length },
-    ...SECTOR_GROUPS.map(group => ({
+    ...SECTORS.map(group => ({
       id: group.id,
-      label: t.explore.sectors[group.id],
+      label: lang === "ar" ? group.labelAr : group.labelEn,
       Icon: sectorIcons[group.id],
-      count: all.filter(product => (group.sectors as readonly string[]).includes(product.sector)).length,
+      count: all.filter(product => product.sectorKey === group.id).length,
     })),
   ];
 
@@ -76,7 +71,7 @@ function ProductsContent() {
         <span className="pill">{filtered.length} <span className="ms-1">{t.common.companies}</span></span>
       </div>
 
-      <PricesAsOf products={all} />
+      <MarketStatus products={all} />
 
       <div className="mt-7 flex flex-wrap gap-2" role="group" aria-label={t.store.title}>
         {chips.map(({ id, label, Icon, count }) => {

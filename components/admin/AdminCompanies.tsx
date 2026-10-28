@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import type { AdminCompany } from "@/lib/admin-types";
+import { SECTORS, sectorLabel } from "@/data/sectors";
 import {
   AdminError,
   AdminLoading,
@@ -14,7 +15,7 @@ import {
   useAdminCopy,
 } from "./admin-ui";
 
-type Draft = Pick<AdminCompany, "id" | "ticker" | "name" | "nameAr" | "description" | "descriptionAr" | "sector" | "sectorAr" | "image" | "logoBg">;
+type Draft = Pick<AdminCompany, "id" | "ticker" | "name" | "nameAr" | "description" | "descriptionAr" | "sectorKey" | "image" | "logoBg">;
 
 function draftFrom(company: AdminCompany): Draft {
   return {
@@ -24,8 +25,7 @@ function draftFrom(company: AdminCompany): Draft {
     nameAr: company.nameAr,
     description: company.description,
     descriptionAr: company.descriptionAr,
-    sector: company.sector,
-    sectorAr: company.sectorAr,
+    sectorKey: company.sectorKey,
     image: company.image,
     logoBg: company.logoBg,
   };
@@ -60,7 +60,7 @@ export function AdminCompanies() {
   async function saveCompany(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!draft) return;
-    if (!draft.name.trim() || !draft.nameAr.trim() || !draft.description.trim() || !draft.descriptionAr.trim() || !draft.sector.trim() || !draft.sectorAr.trim() || !/^#[0-9a-f]{6}$/i.test(draft.logoBg)) {
+    if (!draft.name.trim() || !draft.nameAr.trim() || !draft.description.trim() || !draft.descriptionAr.trim() || !/^#[0-9a-f]{6}$/i.test(draft.logoBg)) {
       setNotice({ key: "invalidCompany", tone: "error" });
       return;
     }
@@ -130,7 +130,7 @@ export function AdminCompanies() {
                 <CompanyLogo src={company.image} name={`${company.name} ${company.ticker}`} logoBg={company.logoBg} className="h-14 w-14 rounded-xl" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-[var(--ink)]">{lang === "ar" ? company.nameAr : company.name}</p>
-                  <p className="mt-0.5 text-xs text-[var(--muted)]">{company.ticker} · {lang === "ar" ? company.sectorAr : company.sector}</p>
+                  <p className="mt-0.5 text-xs text-[var(--muted)]">{company.ticker} · {sectorLabel(company.sectorKey, lang)}</p>
                   <p className="mt-1 text-sm text-[var(--ink)]">{formatAdminKwd(company.price, lang)}</p>
                 </div>
                 <button type="button" onClick={() => setDraft(draftFrom(company))} className="min-h-10 rounded-xl border border-[var(--line)] px-3 text-sm font-medium text-[var(--ink)] hover:border-[var(--gold-dark)]">{copy.common.edit}</button>
@@ -165,8 +165,12 @@ export function AdminCompanies() {
                 {input(copy.companies.logoBg, "logoBg")}
                 {input(copy.companies.name, "name")}
                 {input(copy.companies.nameAr, "nameAr")}
-                {input(copy.companies.sector, "sector")}
-                {input(copy.companies.sectorAr, "sectorAr")}
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-[var(--muted)]">{copy.companies.sector}</span>
+                  <select className={adminInputClass} value={draft.sectorKey} onChange={event => setDraft(current => current ? { ...current, sectorKey: event.target.value as AdminCompany["sectorKey"] } : current)}>
+                    {SECTORS.map(sector => <option key={sector.id} value={sector.id}>{lang === "ar" ? sector.labelAr : sector.labelEn}</option>)}
+                  </select>
+                </label>
                 <div className="sm:col-span-2">{input(copy.companies.logo, "image")}</div>
                 <div className="sm:col-span-2">{input(copy.companies.description, "description", true)}</div>
                 <div className="sm:col-span-2">{input(copy.companies.descriptionAr, "descriptionAr", true)}</div>

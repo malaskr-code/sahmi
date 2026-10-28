@@ -8,25 +8,25 @@ import { useStore } from "@/lib/store";
 import { accountCopy } from "@/data/account-copy";
 import { useAuth } from "@/lib/auth-client";
 import { ChevronDown, LogOut, Moon, Sun, ShoppingBag, UserRound } from "lucide-react";
-import { SECTOR_GROUPS } from "@/data/sectorGroups";
+import { isSectorKey, SECTORS } from "@/data/sectors";
 
 function StoreDropdown({ mobile = false }: { mobile?: boolean }) {
-  const { t } = useStore();
+  const { t, lang } = useStore();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const requestedSector = searchParams.get("sector");
   const currentSector = pathname === "/products"
-    ? SECTOR_GROUPS.some(group => group.id === requestedSector) ? requestedSector : "all"
+    ? isSectorKey(requestedSector) ? requestedSector : "all"
     : "";
   const storeActive = pathname === "/products" || pathname.startsWith("/products/");
   const options = [
     { id: "all", href: "/products", label: t.nav.allCompanies },
-    ...SECTOR_GROUPS.map(group => ({
+    ...SECTORS.map(group => ({
       id: group.id,
       href: `/products?sector=${group.id}`,
-      label: t.explore.sectors[group.id],
+      label: lang === "ar" ? group.labelAr : group.labelEn,
     })),
   ];
 

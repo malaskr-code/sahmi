@@ -25,24 +25,39 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
+function getGiftItems(input: Record<string, unknown>) {
+  const rawItems = Array.isArray(input.items)
+    ? input.items
+    : [{ productId: input.productId, shares: input.shares }];
+  if (rawItems.length < 1 || rawItems.length > 5) throw new PaymentError("invalidGift");
+  const seen = new Set<string>();
+  return rawItems.map(value => {
+    if (!isPlainRecord(value)) throw new PaymentError("invalidGift");
+    const productId = typeof value.productId === "string" ? value.productId.trim() : "";
+    const shares = value.shares;
+    if (!productId || productId.length > 100 || typeof shares !== "number" || !Number.isSafeInteger(shares) || shares < 1 || seen.has(productId)) {
+      throw new PaymentError("invalidGift");
+    }
+    seen.add(productId);
+    return { productId, shares };
+  });
+}
+
 function getGiftInput(input: unknown) {
   if (!isPlainRecord(input)) throw new PaymentError("invalidRequest");
-  const productId = typeof input.productId === "string" ? input.productId.trim() : "";
+  const items = getGiftItems(input);
   const recipientName = typeof input.recipientName === "string" ? input.recipientName.trim() : "";
   const message = typeof input.message === "string" ? input.message.trim() : "";
-  const shares = input.shares;
   const theme = input.theme;
   const payment = input.payment;
   if (
-    !productId || productId.length > 100 ||
     !recipientName || recipientName.length > 120 ||
     message.length > 500 ||
-    typeof shares !== "number" || !Number.isSafeInteger(shares) || shares < 1 ||
     typeof theme !== "string" || !CARD_THEME_IDS.includes(theme as CardThemeId) ||
     (payment !== "wallet" && payment !== "card" && payment !== "both" && payment !== "demo")
   ) throw new PaymentError("invalidGift");
   return {
-    productId, recipientName, message, shares, theme: theme as CardThemeId, payment: payment as PaymentMode,
+    items, recipientName, message, theme: theme as CardThemeId, payment: payment as PaymentMode,
     quoteToken: typeof input.quoteToken === "string" ? input.quoteToken : "",
   };
 }
@@ -112,16 +127,23 @@ async function createGiftForOrder(order: {
   message?: string;
 }, session: ClientSession) {
   const item = order.items[0];
-  if (!item || !order.recipientName || !item.theme) throw new Error("Gift order is missing required details.");
+  if (!item || order.items.length > 5 || !order.recipientName || !item.theme) throw new Error("Gift order is missing required details.");
   const product = await Product.findById(item.product).select("ticker").session(session).lean();
   if (!product) throw new Error("Gift company is no longer available.");
   const code = createGiftCode(String(product.ticker));
+  const items = order.items.map(orderItem => ({
+    product: orderItem.product,
+    shares: orderItem.shares,
+    priceAtPurchase: orderItem.price * orderItem.shares,
+  }));
   const gift = new Gift({
     order: order._id,
     buyer: order.user,
+    items,
+    // Retain first-item aliases and a gift-level total for older readers.
     product: item.product,
     shares: item.shares,
-    priceAtPurchase: item.price * item.shares,
+    priceAtPurchase: items.reduce((sum, giftItem) => sum + giftItem.priceAtPurchase, 0),
     occasion: item.occasion || item.theme,
     theme: item.theme,
     message: order.message || "",
@@ -229,18 +251,19 @@ async function inMongoTransaction<T>(operation: (session: ClientSession) => Prom
 
 export async function prepareGiftPriceQuote(userId: string, input: unknown) {
   if (!isPlainRecord(input)) throw new PaymentError("invalidRequest");
-  const productId = typeof input.productId === "string" ? input.productId.trim() : "";
-  const shares = input.shares;
+  const items = getGiftItems(input);
   const payment = input.payment;
   if (
-    !productId || productId.length > 100 ||
-    typeof shares !== "number" || !Number.isSafeInteger(shares) || shares < 1 ||
     (payment !== "wallet" && payment !== "card" && payment !== "both" && payment !== "demo")
   ) throw new PaymentError("invalidGift");
 
-  const product = await findCheckoutProduct(productId, { refreshPrice: true });
-  const unitPriceFils = sumKwdFils(Number(product.price));
-  const subtotalFils = unitPriceFils * shares;
+  const products = await Promise.all(items.map(item => findCheckoutProduct(item.productId, { refreshPrice: true })));
+  const pricedItems = items.map((item, index) => ({
+    productId: item.productId,
+    shares: item.shares,
+    unitPriceFils: sumKwdFils(Number(products[index].price)),
+  }));
+  const subtotalFils = pricedItems.reduce((sum, item) => sum + item.unitPriceFils * item.shares, 0);
   const totalFils = subtotalFils + SERVICE_FEE_FILS;
   if (!Number.isSafeInteger(totalFils) || totalFils > MAX_PAYMENT_AMOUNT_FILS) throw new PaymentError("invalidAmount");
   const [balanceFils, reservedFils] = payment === "demo"
@@ -251,12 +274,16 @@ export async function prepareGiftPriceQuote(userId: string, input: unknown) {
   const walletFils = walletContributionFils(payment, totalFils, availableFils);
   const cardChargeFils = payment === "demo" ? 0 : totalFils - walletFils;
   const issuedAt = Date.now();
-  const quoteToken = signPriceQuote({ userId, productId, shares, payment, unitPriceFils, walletFils, cardChargeFils, issuedAt });
+  const quoteToken = signPriceQuote({ userId, items: pricedItems, payment, walletFils, cardChargeFils, issuedAt });
   return {
     quoteToken,
     quote: {
-      shares,
-      unitPrice: filsToKwd(unitPriceFils),
+      items: pricedItems.map(item => ({
+        productId: item.productId,
+        shares: item.shares,
+        unitPrice: filsToKwd(item.unitPriceFils),
+        subtotal: filsToKwd(item.unitPriceFils * item.shares),
+      })),
       subtotal: filsToKwd(subtotalFils),
       fee: filsToKwd(SERVICE_FEE_FILS),
       wallet: filsToKwd(walletFils),
@@ -340,13 +367,17 @@ export async function startTopupCheckout(user: { id: string; email: string; name
 export async function startGiftCheckout(user: { id: string; email: string; name?: string }, input: unknown, origin: string, langCode: "en" | "ar") {
   const gift = getGiftInput(input);
   const priceQuote = verifyPriceQuote(gift.quoteToken, {
-    userId: user.id, productId: gift.productId, shares: gift.shares, payment: gift.payment,
+    userId: user.id, items: gift.items, payment: gift.payment,
   });
   if (!priceQuote) throw new PaymentError("priceQuoteExpired", 409);
   if (!process.env.CODE_SECRET) throw new PaymentError("checkoutUnavailable", 503);
-  const product = await findCheckoutProduct(gift.productId);
-  const unitPriceFils = priceQuote.unitPriceFils;
-  const subtotalFils = unitPriceFils * gift.shares;
+  const products = await Promise.all(gift.items.map(item => findCheckoutProduct(item.productId)));
+  const orderItems = gift.items.map((item, index) => ({
+    product: products[index],
+    shares: item.shares,
+    priceFils: priceQuote.items[index].unitPriceFils,
+  }));
+  const subtotalFils = orderItems.reduce((sum, item) => sum + item.priceFils * item.shares, 0);
   const totalFils = subtotalFils + SERVICE_FEE_FILS;
   const cardFilsFromQuote = totalFils - priceQuote.walletFils;
   if (gift.payment === "demo"
@@ -377,13 +408,13 @@ export async function startGiftCheckout(user: { id: string; email: string; name?
       _id: orderId,
       user: new Types.ObjectId(user.id),
       type: "gift",
-      items: [{
-        product: product._id,
-        shares: gift.shares,
-        price: filsToKwd(unitPriceFils),
+      items: orderItems.map(item => ({
+        product: item.product._id,
+        shares: item.shares,
+        price: filsToKwd(item.priceFils),
         occasion: gift.theme,
         theme: gift.theme,
-      }],
+      })),
       recipientName: gift.recipientName,
       message: gift.message,
       fee: filsToKwd(SERVICE_FEE_FILS),
@@ -415,7 +446,7 @@ export async function startGiftCheckout(user: { id: string; email: string; name?
     user,
     computed.cardFils,
     origin,
-    `Gift shares from ${String(product.name)}; the service fee is included.`,
+    `Share gift from ${orderItems.map(item => String(item.product.name)).join(", ")}; the service fee is included.`,
     langCode,
   );
   return {
@@ -423,8 +454,12 @@ export async function startGiftCheckout(user: { id: string; email: string; name?
     url: checkout.url,
     tapId: checkout.tapId,
     quote: {
-      shares: gift.shares,
-      unitPrice: filsToKwd(unitPriceFils),
+      items: orderItems.map((item, index) => ({
+        productId: gift.items[index].productId,
+        shares: item.shares,
+        unitPrice: filsToKwd(item.priceFils),
+        subtotal: filsToKwd(item.priceFils * item.shares),
+      })),
       subtotal: filsToKwd(subtotalFils),
       fee: filsToKwd(SERVICE_FEE_FILS),
       wallet: filsToKwd(totalFils - computed.cardFils),

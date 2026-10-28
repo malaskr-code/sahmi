@@ -9,9 +9,16 @@ import { useStore } from "@/lib/store";
 
 export type Lang = "en" | "ar";
 export type Copy = (typeof commerceCopy)[keyof typeof commerceCopy];
+export type GiftCompanyItem = {
+  company: { ticker: string; name: string; nameAr: string; image: string; logoBg: string };
+  shares: number;
+  priceAtPurchase: number;
+  currentValue: number;
+};
 export type GiftRecord = {
   id: string;
   direction: "sent" | "received";
+  items: GiftCompanyItem[];
   company: { ticker: string; name: string; nameAr: string; image: string; logoBg: string };
   shares: number;
   priceAtPurchase: number;

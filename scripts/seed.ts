@@ -11,9 +11,9 @@ async function main() {
       return {
         updateOne: {
           filter: { ticker: product.ticker },
-          // Re-running the seed updates only logo metadata on existing products.
+          // Re-running the seed refreshes only presentation metadata and the normalized sector key.
           update: {
-            $set: { logoBg },
+            $set: { logoBg, sectorKey: product.sectorKey },
             $setOnInsert: { ...insertFields, image: "", active: true, priceUpdatedAt: null, createdAt: new Date() },
           },
           upsert: true,

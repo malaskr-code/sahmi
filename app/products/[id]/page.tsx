@@ -2,19 +2,21 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Check, Minus, Plus } from "lucide-react";
 import { CARD_THEME_IDS, type CardThemeId } from "@/data/cardThemes";
 import { CardThemePreview } from "@/components/CardThemePreview";
 import { formatKwd, SERVICE_FEE } from "@/lib/products";
 import { useProducts } from "@/lib/use-products";
 import { ProductFeedback } from "@/components/ProductFeedback";
-import { PricesAsOf } from "@/components/PricesAsOf";
+import { MarketStatus } from "@/components/MarketStatus";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { useStore } from "@/lib/store";
+import { sectorLabel } from "@/data/sectors";
 
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const { product, loading, error, notFound, retry } = useProducts(params.id);
   const { t, lang, gift, setGift } = useStore();
   const [mode, setMode] = useState<"shares" | "budget">("shares");
@@ -22,17 +24,18 @@ export default function ProductDetailPage() {
   const [sharesPicked, setSharesPicked] = useState(false);
   const [custom, setCustom] = useState("");
   const [budget, setBudget] = useState("");
-  const [theme, setTheme] = useState<CardThemeId | null>(null);
-  const [confirm, setConfirm] = useState(false);
+  const [theme, setTheme] = useState<CardThemeId>("general");
   const [added, setAdded] = useState(false);
+  const [addError, setAddError] = useState("");
 
   useEffect(() => {
-    if (gift && gift.product.id === product?.id) {
+    const savedItem = gift?.items.find(item => item.product.id === product?.id);
+    if (gift && savedItem) {
       setTheme(gift.theme);
-      setShares(gift.shares);
+      setShares(savedItem.shares);
       setSharesPicked(true);
     } else {
-      setTheme(null);
+      setTheme(gift?.theme ?? "general");
       setSharesPicked(false);
     }
   }, [gift, product?.id]);
@@ -52,19 +55,27 @@ export default function ProductDetailPage() {
   const currency = (amount: number) => formatKwd(amount, lang);
 
   const add = () => {
-    if (!product || count < 1 || !hasPickedAmount || !theme) return;
-    if (gift) {
-      setConfirm(true);
+    if (!product || count < 1 || !hasPickedAmount) return;
+    const items = gift?.items ?? [];
+    const existing = items.some(item => item.product.id === product.id);
+    if (!existing && items.length >= 5) {
+      setAddError(t.cart.maxCompanies);
       return;
     }
-    setGift({ product, shares: count, theme });
+    setAddError("");
+    setGift({
+      items: existing
+        ? items.map(item => item.product.id === product.id ? { ...item, product, shares: count } : item)
+        : [...items, { product, shares: count }],
+      theme,
+    });
     setAdded(true);
   };
 
-  const finishReplace = () => {
-    if (product && theme) setGift({ product, shares: count, theme });
-    setConfirm(false);
-    setAdded(true);
+  const buyNow = () => {
+    if (!product || count < 1 || !hasPickedAmount) return;
+    const params = new URLSearchParams({ buyNow: product.id, shares: String(count), theme });
+    router.push(`/checkout?${params.toString()}`);
   };
 
   if (loading || error || !product) {
@@ -89,7 +100,7 @@ export default function ProductDetailPage() {
         <div className="card h-fit overflow-hidden p-7 md:p-10">
           <CompanyLogo src={product.image} name={name} logoBg={product.logoBg} className="h-16 w-16 rounded-xl"/>
           <p className="mt-8 text-xs font-bold uppercase tracking-[.16em] text-[var(--gold-dark)]">
-            {lang === "ar" ? product.sectorAr : t.common.sectors[product.sector as keyof typeof t.common.sectors] ?? product.sector}
+            {sectorLabel(product.sectorKey, lang)}
           </p>
           <h1 className="font-display mt-3 max-w-xl text-4xl font-semibold leading-tight md:text-5xl">{name}</h1>
           <p className="mt-4 max-w-xl leading-7 text-[var(--muted)]">
@@ -105,7 +116,7 @@ export default function ProductDetailPage() {
               {product.change.toFixed(2)}% <span className="text-[var(--muted)]">{t.common.change}</span>
             </p>
           </div>
-          <PricesAsOf products={[product]} />
+          <MarketStatus products={[product]} />
         </div>
 
         <aside id="gift-builder" className="card h-fit p-6 md:p-7">
@@ -244,28 +255,28 @@ export default function ProductDetailPage() {
             <p role="alert" className="mt-3 text-xs font-medium text-[var(--red)]">{t.product.outOfRange}</p>
           )}
           <p className="mt-3 text-xs leading-5 text-[var(--muted)]">{t.product.feeNote}</p>
-          <button
-            disabled={count < 1 || !hasPickedAmount || !theme}
-            onClick={add}
-            className="gold-button mt-5 w-full disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {added ? <><Check size={17} />{t.product.added}</> : t.product.add}
-          </button>
+          {addError && <p className="mt-4 text-sm text-[var(--red)]" role="alert">{addError}</p>}
+          {added && <p className="mt-4 text-sm text-[var(--green)]" role="status">{t.product.added}</p>}
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              disabled={count < 1 || !hasPickedAmount}
+              onClick={add}
+              className="outline-button w-full disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {t.product.add}
+            </button>
+            <button
+              type="button"
+              disabled={count < 1 || !hasPickedAmount}
+              onClick={buyNow}
+              className="gold-button w-full disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {t.product.buyNow}
+            </button>
+          </div>
         </aside>
       </div>
-
-      {confirm && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-[#111827]/55 p-5">
-          <div className="card w-full max-w-md p-7">
-            <h2 className="font-display mt-3 text-2xl font-semibold">{t.product.replaceTitle}</h2>
-            <p className="mt-3 leading-6 text-[var(--muted)]">{t.product.replaceText}</p>
-            <div className="mt-7 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <button onClick={() => setConfirm(false)} className="outline-button">{t.product.cancel}</button>
-              <button onClick={finishReplace} className="gold-button">{t.product.replace}</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

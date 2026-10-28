@@ -3,13 +3,17 @@ import type { CardThemeId } from "@/data/cardThemes";
 
 const PRICE_LOCK_MS = 10 * 60 * 1000;
 
-type QuotePayload = {
-  version: 3;
-  userId: string;
+export type QuoteItemPayload = {
   productId: string;
   shares: number;
-  payment: "wallet" | "card" | "both" | "demo";
   unitPriceFils: number;
+};
+
+type QuotePayload = {
+  version: 4;
+  userId: string;
+  items: QuoteItemPayload[];
+  payment: "wallet" | "card" | "both" | "demo";
   walletFils: number;
   cardChargeFils: number;
   issuedAt: number;
@@ -26,14 +30,14 @@ function signature(payload: string) {
 }
 
 export function signPriceQuote(input: Omit<QuotePayload, "version">) {
-  const payload = Buffer.from(JSON.stringify({ ...input, version: 3 }), "utf8").toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ ...input, version: 4 }), "utf8").toString("base64url");
   const digest = signature(payload).toString("base64url");
   return `${payload}.${digest}`;
 }
 
 export function verifyPriceQuote(
   token: unknown,
-  expected: { userId: string; productId: string; shares: number; payment: "wallet" | "card" | "both" | "demo" },
+  expected: { userId: string; items: Array<{ productId: string; shares: number }>; payment: "wallet" | "card" | "both" | "demo" },
   now = Date.now(),
 ) {
   if (typeof token !== "string" || token.length > 2048) return null;
@@ -51,13 +55,11 @@ export function verifyPriceQuote(
   try {
     const payload = JSON.parse(Buffer.from(payloadText, "base64url").toString("utf8")) as QuotePayload;
     if (
-      payload.version !== 3 ||
+      payload.version !== 4 ||
       payload.userId !== expected.userId ||
-      payload.productId !== expected.productId ||
-      payload.shares !== expected.shares ||
+      !Array.isArray(payload.items) ||
+      payload.items.length < 1 || payload.items.length > 5 ||
       payload.payment !== expected.payment ||
-      !Number.isSafeInteger(payload.unitPriceFils) ||
-      payload.unitPriceFils <= 0 ||
       !Number.isSafeInteger(payload.walletFils) ||
       payload.walletFils < 0 ||
       !Number.isSafeInteger(payload.cardChargeFils) ||
@@ -66,8 +68,19 @@ export function verifyPriceQuote(
       payload.issuedAt > now + 30_000 ||
       now - payload.issuedAt >= PRICE_LOCK_MS
     ) return null;
+    const seen = new Set<string>();
+    if (payload.items.length !== expected.items.length || payload.items.some((item, index) => {
+      if (!item || typeof item.productId !== "string" || !item.productId || item.productId.length > 100
+        || !Number.isSafeInteger(item.shares) || item.shares < 1
+        || !Number.isSafeInteger(item.unitPriceFils) || item.unitPriceFils <= 0
+        || item.productId !== expected.items[index]?.productId
+        || item.shares !== expected.items[index]?.shares
+        || seen.has(item.productId)) return true;
+      seen.add(item.productId);
+      return false;
+    })) return null;
     return {
-      unitPriceFils: payload.unitPriceFils,
+      items: payload.items,
       walletFils: payload.walletFils,
       cardChargeFils: payload.cardChargeFils,
       issuedAt: payload.issuedAt,
@@ -79,8 +92,7 @@ export function verifyPriceQuote(
 }
 
 export type GiftPriceQuote = {
-  productId: string;
-  shares: number;
+  items: Array<{ productId: string; shares: number }>;
   payment: "wallet" | "card" | "both" | "demo";
   theme?: CardThemeId;
 };

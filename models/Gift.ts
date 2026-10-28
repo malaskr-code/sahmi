@@ -4,9 +4,19 @@ import { CARD_THEME_IDS } from "@/data/cardThemes";
 const giftSchema = new Schema({
   order: { type: Schema.Types.ObjectId, ref: "Order", required: true, unique: true },
   buyer: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  product: { type: Schema.Types.ObjectId, ref: "Product", required: true },
-  shares: { type: Number, required: true, min: 1, validate: Number.isInteger },
-  priceAtPurchase: { type: Number, required: true, min: 0 },
+  // These top-level fields are retained for gifts created before multi-company boxes.
+  product: { type: Schema.Types.ObjectId, ref: "Product", default: null },
+  shares: { type: Number, min: 1, validate: Number.isInteger },
+  priceAtPurchase: { type: Number, min: 0 },
+  items: {
+    type: [{
+      product: { type: Schema.Types.ObjectId, ref: "Product", required: true },
+      shares: { type: Number, required: true, min: 1, validate: Number.isInteger },
+      priceAtPurchase: { type: Number, required: true, min: 0 },
+    }],
+    default: [],
+    validate: { validator: (items: unknown[]) => Array.isArray(items) && items.length <= 5, message: "A gift may include at most five companies." },
+  },
   occasion: { type: String, required: true, maxlength: 32 },
   theme: { type: String, enum: CARD_THEME_IDS, required: true },
   message: { type: String, default: "", maxlength: 500 },
