@@ -9,7 +9,7 @@ export type AdminOrder = {
   type: "gift" | "topup";
   company: { ticker: string; name: string; nameAr: string; image: string; logoBg: string } | null;
   companies?: Array<{ ticker: string; name: string; nameAr: string; image: string; logoBg: string; shares: number }>;
-  paymentMethod: "wallet" | "card" | "both" | "demo";
+  paymentMethod: "wallet" | "card" | "demo";
   status: "pending" | "paid" | "cancelled";
   total: number;
   createdAt: string;
@@ -20,7 +20,7 @@ type AdminOrdersLabels = {
   empty: string;
   columns: { order: string; type: string; payment: string; status: string; total: string; date: string };
   types: { gift: string; topup: string };
-  payments: { wallet: string; card: string; both: string; demo: string };
+  payments: { wallet: string; card: string; demo: string };
   statuses: { pending: string; paid: string; cancelled: string };
 };
 

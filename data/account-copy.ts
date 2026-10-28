@@ -49,7 +49,7 @@ export const accountCopy = {
       empty: "No orders yet.",
       columns: { order: "Order", type: "Type", payment: "Payment", status: "Status", total: "Total", date: "Date" },
       types: { gift: "Gift", topup: "Wallet top-up" },
-      payments: { wallet: "Wallet", card: "Card", both: "Wallet + card", demo: "demo" },
+      payments: { wallet: "Wallet", card: "Card", demo: "demo" },
       statuses: { pending: "Pending", paid: "Paid", cancelled: "Cancelled" },
     },
     empty: {
@@ -144,7 +144,7 @@ export const accountCopy = {
       empty: "لا توجد طلبات بعد.",
       columns: { order: "الطلب", type: "النوع", payment: "الدفع", status: "الحالة", total: "الإجمالي", date: "التاريخ" },
       types: { gift: "هدية", topup: "شحن المحفظة" },
-      payments: { wallet: "المحفظة", card: "البطاقة", both: "المحفظة والبطاقة", demo: "demo" },
+      payments: { wallet: "المحفظة", card: "البطاقة", demo: "demo" },
       statuses: { pending: "معلّق", paid: "مدفوع", cancelled: "ملغي" },
     },
     empty: {

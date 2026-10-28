@@ -55,21 +55,21 @@ test("gift price quotes are signed to the user and expire after ten minutes", ()
         { productId: "zain", shares: 3, unitPriceFils: 813 },
         { productId: "nbk", shares: 2, unitPriceFils: 5120 },
       ],
-      payment: "both" as const,
-      walletFils: 153,
-      cardChargeFils: 4996,
+      payment: "card" as const,
+      walletFils: 0,
+      cardChargeFils: 12929,
       issuedAt,
     };
     const token = signPriceQuote(input);
     const expected = {
       userId: "user-123",
       items: [{ productId: "zain", shares: 3 }, { productId: "nbk", shares: 2 }],
-      payment: "both" as const,
+      payment: "card" as const,
     };
     assert.deepEqual(verifyPriceQuote(token, expected, issuedAt + 599_999), {
       items: input.items,
-      walletFils: 153,
-      cardChargeFils: 4996,
+      walletFils: 0,
+      cardChargeFils: 12929,
       issuedAt,
       expiresAt: issuedAt + 600_000,
     });

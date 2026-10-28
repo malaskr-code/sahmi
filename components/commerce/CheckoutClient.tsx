@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, BadgeCheck, Clock3, CreditCard, Minus, Plus, WalletCards } from "lucide-react";
@@ -13,7 +13,7 @@ import { CompanyLogo } from "@/components/CompanyLogo";
 import { MarketStatus } from "@/components/MarketStatus";
 import { useCommerce, PageIntro, LoadingPanel, responseError } from "./shared";
 
-type Mode = "wallet" | "card" | "both" | "demo";
+type Mode = "wallet" | "card" | "demo";
 type QuoteItem = { productId: string; shares: number; unitPrice: number; subtotal: number };
 type Quote = { items: QuoteItem[]; subtotal: number; fee: number; wallet: number; card: number; total: number; lockedAt: string; lockExpiresAt: string };
 type BuyNow = { productId: string; shares: number; theme: CardThemeId };
@@ -28,7 +28,10 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
   const [theme, setTheme] = useState<CardThemeId>(buyNow?.theme ?? "general");
   const [recipientName, setRecipientName] = useState("");
   const [message, setMessage] = useState("");
-  const [payment, setPayment] = useState<Mode>("both");
+  const [payment, setPayment] = useState<Mode>("card");
+  const paymentTouched = useRef(false);
+  const [walletAvailable, setWalletAvailable] = useState<number | null>(null);
+  const [walletLoadError, setWalletLoadError] = useState(false);
   const [resolvedProducts, setResolvedProducts] = useState<Record<string, Product>>({});
   const [productLoading, setProductLoading] = useState(false);
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -39,6 +42,25 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
   const [priceFresh, setPriceFresh] = useState(false);
   const [pending, setPending] = useState(false);
   const [submitError, setSubmitError] = useState("");
+
+  const refreshWalletBalance = useCallback(async () => {
+    try {
+      const response = await fetch("/api/wallet", { credentials: "same-origin", cache: "no-store" });
+      const body = await response.json().catch(() => null);
+      if (!response.ok || typeof body?.available !== "number" || !Number.isFinite(body.available)) {
+        throw new Error("Wallet balance unavailable.");
+      }
+      setWalletAvailable(body.available);
+      setWalletLoadError(false);
+      return true;
+    } catch {
+      setWalletAvailable(null);
+      setWalletLoadError(true);
+      return false;
+    }
+  }, []);
+
+  useEffect(() => { void refreshWalletBalance(); }, [refreshWalletBalance]);
 
   useEffect(() => {
     if (buyNow) {
@@ -91,7 +113,14 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
         body: JSON.stringify({ action: "quote", items: JSON.parse(itemsSignature), payment }),
       });
       const body = await response.json().catch(() => null);
-      if (!response.ok || !body?.quote || !body?.quoteToken) throw new Error(responseError(copy, body, copy.checkout.error));
+      if (!response.ok || !body?.quote || !body?.quoteToken) {
+        if (body?.code === "insufficientWallet") {
+          await refreshWalletBalance();
+          paymentTouched.current = true;
+          setPayment("card");
+        }
+        throw new Error(responseError(copy, body, copy.checkout.error));
+      }
       setQuote(body.quote);
       setQuoteToken(body.quoteToken);
       return true;
@@ -103,7 +132,7 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
     } finally {
       if (!signal?.aborted) { setQuoting(false); setRefreshingPrice(false); }
     }
-  }, [itemsSignature, lang, payment, copy, requestItems.length]);
+  }, [itemsSignature, lang, payment, copy, requestItems.length, refreshWalletBalance]);
 
   const refreshPriceAndQuote = useCallback(async () => {
     if (!requestItems.length) return;
@@ -124,6 +153,13 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
     const timer = window.setTimeout(() => { void refreshPriceAndQuote(); }, Math.max(0, wait));
     return () => window.clearTimeout(timer);
   }, [quote?.lockExpiresAt, refreshPriceAndQuote]);
+
+  useEffect(() => {
+    if (paymentTouched.current || walletAvailable === null || !quote) return;
+    const initialPayment: Mode = walletAvailable >= quote.total ? "wallet" : "card";
+    paymentTouched.current = true;
+    if (payment !== initialPayment) setPayment(initialPayment);
+  }, [payment, quote?.total, walletAvailable]);
 
   function updateShares(productId: string, shares: number) {
     setQuote(null); setQuoteToken(""); setSubmitError("");
@@ -158,6 +194,11 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
       const body = await response.json().catch(() => null);
       if (!response.ok) {
         const shouldRefresh = body?.code === "walletBalanceChanged" || body?.code === "priceQuoteExpired";
+        if (body?.code === "insufficientWallet") {
+          await refreshWalletBalance();
+          paymentTouched.current = true;
+          setPayment("card");
+        }
         if (shouldRefresh) await refreshPriceAndQuote();
         throw new Error(responseError(copy, body, copy.checkout.error));
       }
@@ -176,7 +217,7 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
   if (productLoading && !products.length) return <main className="page-shell py-12"><LoadingPanel text={copy.checkout.refreshing}/></main>;
 
   const backHref = buyNow ? `/products/${encodeURIComponent(buyNow.productId)}` : "/cart";
-  return <main className="page-shell min-h-[65vh] py-10 md:py-16">
+  return <main className="page-shell min-h-[65vh] pt-10 pb-16 md:pt-16 md:pb-20">
     <div className="mb-5"><Link href={backHref} className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--muted)] hover:text-[var(--gold-dark)]"><ArrowLeft size={15}/>{buyNow ? copy.checkout.backToProduct : copy.checkout.backToCart}</Link></div>
     <PageIntro eyebrow={copy.checkout.eyebrow} title={copy.checkout.title} subtitle={copy.checkout.subtitle}/>
     <MarketStatus products={products}/>
@@ -223,8 +264,36 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
         <section className="card p-5 sm:p-7">
           <h2 className="font-display text-2xl font-semibold">{copy.checkout.payment}</h2>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{copy.checkout.paymentHelp}</p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {(["both", "wallet", "card", "demo"] as Mode[]).map(mode => <label key={mode} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${payment === mode ? "border-[var(--gold-dark)] bg-[var(--gold)]/10" : "border-[var(--line)] hover:bg-[var(--soft)]"}`}><input type="radio" name="payment" value={mode} checked={payment === mode} onChange={() => { setQuote(null); setQuoteToken(""); setPayment(mode); }} className="mt-1 accent-[var(--gold-dark)]"/><span className="min-w-0"><span className="flex items-center gap-2 font-semibold">{mode === "card" ? <CreditCard size={15}/> : <WalletCards size={15}/>}<span>{mode === "demo" ? copy.checkout.generateCode : copy.checkout[mode]}</span></span><span className="mt-1 block text-[11px] leading-5 text-[var(--muted)]">{mode === "demo" ? copy.checkout.generateCodeNote : mode === "both" ? copy.checkout.fromWallet : mode === "wallet" ? copy.wallet.available : copy.checkout.byCard}</span></span></label>)}
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {(["wallet", "card", "demo"] as Mode[]).map(mode => {
+              const shortfall = quote && walletAvailable !== null ? Math.max(0, quote.total - walletAvailable) : 0;
+              const walletDisabled = mode === "wallet" && (walletAvailable === null || shortfall > 0);
+              const subtitle = mode === "wallet"
+                ? walletLoadError
+                  ? copy.wallet.error
+                  : walletAvailable === null
+                    ? copy.checkout.walletLoading
+                    : copy.checkout.walletBalance.replace("{amount}", currency(walletAvailable))
+                : mode === "card"
+                  ? copy.checkout.cardMethods
+                  : copy.checkout.generateCodeNote;
+              return <div key={mode} className="min-w-0">
+                <label className={`flex min-h-full items-start gap-3 rounded-xl border p-4 transition ${walletDisabled ? "cursor-not-allowed border-[var(--line)] opacity-55" : `cursor-pointer ${payment === mode ? "border-[var(--gold-dark)] bg-[var(--gold)]/10" : "border-[var(--line)] hover:bg-[var(--soft)]"}`}`}>
+                  <input type="radio" name="payment" value={mode} checked={payment === mode} disabled={walletDisabled} onChange={() => {
+                    paymentTouched.current = true;
+                    setQuote(null); setQuoteToken(""); setPayment(mode);
+                  }} className="mt-1 accent-[var(--gold-dark)] disabled:cursor-not-allowed"/>
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2 font-semibold">{mode === "card" ? <CreditCard size={15}/> : <WalletCards size={15}/>}<span>{mode === "demo" ? copy.checkout.generateCode : copy.checkout[mode]}</span></span>
+                    <span dir={lang === "ar" ? "rtl" : "ltr"} className="mt-1 block text-[11px] leading-5 text-[var(--muted)]">{subtitle}</span>
+                  </span>
+                </label>
+                {mode === "wallet" && shortfall > 0 && <div className="mt-2 space-y-1 text-xs leading-5">
+                  <p className="text-[var(--muted)]">{copy.checkout.insufficientBalance.replace("{amount}", currency(shortfall))}</p>
+                  <Link href="/wallet" className="font-semibold text-[var(--gold-dark)] underline underline-offset-4">{copy.checkout.addMoney}</Link>
+                </div>}
+              </div>;
+            })}
           </div>
         </section>
       </div>

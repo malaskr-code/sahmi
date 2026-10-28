@@ -47,11 +47,10 @@ function kuwaitDayStart(key: string) {
 }
 
 function paymentMethodFor(order: { paymentMethod?: string; paidFromWallet?: number; paidByCard?: number }): AdminPaymentMethod {
-  if (order.paymentMethod === "demo" || order.paymentMethod === "wallet" || order.paymentMethod === "card" || order.paymentMethod === "both") {
+  if (order.paymentMethod === "demo" || order.paymentMethod === "wallet" || order.paymentMethod === "card") {
     return order.paymentMethod;
   }
-  if (Number(order.paidFromWallet) > 0 && Number(order.paidByCard) > 0) return "both";
-  if (Number(order.paidFromWallet) > 0) return "wallet";
+  if (Number(order.paidFromWallet) > 0 && Number(order.paidByCard) <= 0) return "wallet";
   return "card";
 }
 
@@ -274,7 +273,7 @@ export async function getAdminOrders(search: URLSearchParams) {
   const status = search.get("status") ?? "";
   if (["pending", "paid", "cancelled"].includes(status)) query.status = status;
   const payment = search.get("payment") ?? "";
-  if (["card", "wallet", "both", "demo"].includes(payment)) query.paymentMethod = payment;
+  if (["card", "wallet", "demo"].includes(payment)) query.paymentMethod = payment;
   const companyTicker = search.get("company")?.trim().toUpperCase();
   if (companyTicker) {
     const company = await Product.findOne({ ticker: companyTicker }).select("_id").lean();

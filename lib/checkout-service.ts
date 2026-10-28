@@ -6,7 +6,7 @@ import Product from "@/models/Product";
 import Transaction from "@/models/Transaction";
 import User from "@/models/User";
 import { CARD_THEME_IDS, type CardThemeId } from "@/data/cardThemes";
-import { MIN_CARD_PAYMENT_FILS, SERVICE_FEE_FILS, filsToKwd, kwdToFils, parseTopupFils } from "@/lib/money";
+import { SERVICE_FEE_FILS, filsToKwd, kwdToFils, parseTopupFils } from "@/lib/money";
 import { createGiftCode, encryptGiftCode, hashGiftCode } from "@/lib/gift-codes";
 import { assertTapConfigured, createTapCharge, retrieveTapCharge, TapConfigurationError, type TapChargeResponse } from "@/lib/tap";
 import { readReservedWalletFils, readWalletFils } from "@/lib/wallet";
@@ -19,7 +19,7 @@ const CHECKOUT_RESERVATION_SECONDS = 31 * 60;
 const PRICE_LOCK_MS = 10 * 60 * 1000;
 const MAX_PAYMENT_AMOUNT_FILS = 99_999_990;
 
-type PaymentMode = "wallet" | "card" | "both" | "demo";
+type PaymentMode = "wallet" | "card" | "demo";
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -54,7 +54,7 @@ function getGiftInput(input: unknown) {
     !recipientName || recipientName.length > 120 ||
     message.length > 500 ||
     typeof theme !== "string" || !CARD_THEME_IDS.includes(theme as CardThemeId) ||
-    (payment !== "wallet" && payment !== "card" && payment !== "both" && payment !== "demo")
+    (payment !== "wallet" && payment !== "card" && payment !== "demo")
   ) throw new PaymentError("invalidGift");
   return {
     items, recipientName, message, theme: theme as CardThemeId, payment: payment as PaymentMode,
@@ -68,17 +68,6 @@ function sumKwdFils(amount: number) {
   } catch {
     throw new PaymentError("invalidAmount", 409);
   }
-}
-
-function walletContributionFils(payment: PaymentMode, totalFils: number, availableFils: number) {
-  if (payment === "demo") return 0;
-  if (payment === "wallet") return totalFils;
-  if (payment === "card") return 0;
-  const walletFils = Math.min(availableFils, totalFils);
-  const remainingFils = totalFils - walletFils;
-  return remainingFils > 0 && remainingFils < MIN_CARD_PAYMENT_FILS
-    ? totalFils - MIN_CARD_PAYMENT_FILS
-    : walletFils;
 }
 
 async function lockWallet(userId: string, session: ClientSession) {
@@ -223,10 +212,16 @@ async function finalizePendingOrder(
   const feeFils = sumKwdFils(order.fee);
   const totalFils = subtotalFils + feeFils;
   const expectedCardFils = sumKwdFils(order.paidByCard);
+  const expectedWalletFils = sumKwdFils(order.paidFromWallet);
+  const expectedWalletForMethod = order.paymentMethod === "wallet" ? totalFils : 0;
+  const expectedCardForMethod = order.paymentMethod === "card" ? totalFils : 0;
   if (
+    (order.paymentMethod !== "wallet" && order.paymentMethod !== "card") ||
+    expectedWalletFils !== expectedWalletForMethod ||
+    expectedCardFils !== expectedCardForMethod ||
     (expectedCardFils === 0 ? options.cardChargeFils !== undefined && options.cardChargeFils !== 0 : options.cardChargeFils !== expectedCardFils) ||
     totalFils !== sumKwdFils(order.total) ||
-    sumKwdFils(order.paidFromWallet) + expectedCardFils !== totalFils
+    expectedWalletFils + expectedCardFils !== totalFils
   ) throw new Error("Gift payment amount does not match the pending order.");
 
   await persistWalletTransactions(order, session);
@@ -254,7 +249,7 @@ export async function prepareGiftPriceQuote(userId: string, input: unknown) {
   const items = getGiftItems(input);
   const payment = input.payment;
   if (
-    (payment !== "wallet" && payment !== "card" && payment !== "both" && payment !== "demo")
+    (payment !== "wallet" && payment !== "card" && payment !== "demo")
   ) throw new PaymentError("invalidGift");
 
   const products = await Promise.all(items.map(item => findCheckoutProduct(item.productId, { refreshPrice: true })));
@@ -271,8 +266,8 @@ export async function prepareGiftPriceQuote(userId: string, input: unknown) {
     : await Promise.all([readWalletFils(userId), readReservedWalletFils(userId)]);
   const availableFils = Math.max(0, balanceFils - reservedFils);
   if (payment === "wallet" && availableFils < totalFils) throw new PaymentError("insufficientWallet");
-  const walletFils = walletContributionFils(payment, totalFils, availableFils);
-  const cardChargeFils = payment === "demo" ? 0 : totalFils - walletFils;
+  const walletFils = payment === "wallet" ? totalFils : 0;
+  const cardChargeFils = payment === "card" ? totalFils : 0;
   const issuedAt = Date.now();
   const quoteToken = signPriceQuote({ userId, items: pricedItems, payment, walletFils, cardChargeFils, issuedAt });
   return {
@@ -380,9 +375,12 @@ export async function startGiftCheckout(user: { id: string; email: string; name?
   const subtotalFils = orderItems.reduce((sum, item) => sum + item.priceFils * item.shares, 0);
   const totalFils = subtotalFils + SERVICE_FEE_FILS;
   const cardFilsFromQuote = totalFils - priceQuote.walletFils;
-  if (gift.payment === "demo"
-    ? priceQuote.walletFils !== 0 || priceQuote.cardChargeFils !== 0
-    : cardFilsFromQuote !== priceQuote.cardChargeFils
+  const expectedWalletFils = gift.payment === "wallet" ? totalFils : 0;
+  const expectedCardFils = gift.payment === "card" ? totalFils : 0;
+  if (
+    priceQuote.walletFils !== expectedWalletFils ||
+    priceQuote.cardChargeFils !== expectedCardFils ||
+    cardFilsFromQuote !== priceQuote.cardChargeFils
   ) throw new PaymentError("priceQuoteExpired", 409);
   if (!Number.isSafeInteger(totalFils) || totalFils > MAX_PAYMENT_AMOUNT_FILS) throw new PaymentError("invalidAmount");
   if (priceQuote.cardChargeFils > 0) assertTapConfigured();
@@ -393,16 +391,16 @@ export async function startGiftCheckout(user: { id: string; email: string; name?
   const priceLockExpiresAt = new Date(priceQuote.expiresAt);
   const computed = await inMongoTransaction(async session => {
     let walletFils = 0;
-    if (gift.payment !== "demo") {
+    if (gift.payment === "wallet") {
       await lockWallet(user.id, session);
       const balanceFils = await readWalletFils(user.id, session);
       const reservedFils = await readReservedWalletFils(user.id, session, startedAt);
       const availableFils = Math.max(0, balanceFils - reservedFils);
       if (gift.payment === "wallet" && availableFils < totalFils) throw new PaymentError("insufficientWallet");
-      walletFils = walletContributionFils(gift.payment, totalFils, availableFils);
+      walletFils = totalFils;
       if (walletFils !== priceQuote.walletFils) throw new PaymentError("walletBalanceChanged", 409);
     }
-    const cardFils = gift.payment === "demo" ? 0 : totalFils - walletFils;
+    const cardFils = gift.payment === "card" ? totalFils : 0;
 
     const order = new Order({
       _id: orderId,

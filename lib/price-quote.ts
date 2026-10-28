@@ -10,10 +10,10 @@ export type QuoteItemPayload = {
 };
 
 type QuotePayload = {
-  version: 4;
+  version: 5;
   userId: string;
   items: QuoteItemPayload[];
-  payment: "wallet" | "card" | "both" | "demo";
+  payment: "wallet" | "card" | "demo";
   walletFils: number;
   cardChargeFils: number;
   issuedAt: number;
@@ -30,14 +30,14 @@ function signature(payload: string) {
 }
 
 export function signPriceQuote(input: Omit<QuotePayload, "version">) {
-  const payload = Buffer.from(JSON.stringify({ ...input, version: 4 }), "utf8").toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ ...input, version: 5 }), "utf8").toString("base64url");
   const digest = signature(payload).toString("base64url");
   return `${payload}.${digest}`;
 }
 
 export function verifyPriceQuote(
   token: unknown,
-  expected: { userId: string; items: Array<{ productId: string; shares: number }>; payment: "wallet" | "card" | "both" | "demo" },
+  expected: { userId: string; items: Array<{ productId: string; shares: number }>; payment: "wallet" | "card" | "demo" },
   now = Date.now(),
 ) {
   if (typeof token !== "string" || token.length > 2048) return null;
@@ -55,7 +55,7 @@ export function verifyPriceQuote(
   try {
     const payload = JSON.parse(Buffer.from(payloadText, "base64url").toString("utf8")) as QuotePayload;
     if (
-      payload.version !== 4 ||
+      payload.version !== 5 ||
       payload.userId !== expected.userId ||
       !Array.isArray(payload.items) ||
       payload.items.length < 1 || payload.items.length > 5 ||
@@ -93,6 +93,6 @@ export function verifyPriceQuote(
 
 export type GiftPriceQuote = {
   items: Array<{ productId: string; shares: number }>;
-  payment: "wallet" | "card" | "both" | "demo";
+  payment: "wallet" | "card" | "demo";
   theme?: CardThemeId;
 };

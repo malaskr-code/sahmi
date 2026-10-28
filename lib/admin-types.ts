@@ -2,7 +2,7 @@ import type { SectorKey } from "@/data/sectors";
 
 export type AdminTab = "overview" | "orders" | "companies" | "prices" | "users";
 export type AdminOrderStatus = "pending" | "paid" | "cancelled";
-export type AdminPaymentMethod = "wallet" | "card" | "both" | "demo";
+export type AdminPaymentMethod = "wallet" | "card" | "demo";
 export type AdminOrderCompany = {
   ticker: string;
   name: string;

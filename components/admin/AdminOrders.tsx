@@ -90,7 +90,6 @@ export function AdminOrders() {
 
   function methodLabel(method: AdminOrderRow["paymentMethod"]) {
     if (method === "wallet") return copy.orders.paymentWallet;
-    if (method === "both") return copy.orders.paymentBoth;
     if (method === "demo") return copy.orders.paymentDemo;
     return copy.orders.paymentCard;
   }
@@ -172,7 +171,6 @@ export function AdminOrders() {
             <option value="">{copy.common.all}</option>
             <option value="card">{copy.orders.paymentCard}</option>
             <option value="wallet">{copy.orders.paymentWallet}</option>
-            <option value="both">{copy.orders.paymentBoth}</option>
             <option value="demo">{copy.orders.paymentDemo}</option>
           </select>
         </label>

@@ -16,7 +16,7 @@ const orderSchema = new Schema({
   total: { type: Number, required: true, min: 0 },
   paidFromWallet: { type: Number, default: 0, min: 0 },
   paidByCard: { type: Number, default: 0, min: 0 },
-  paymentMethod: { type: String, enum: ["wallet", "card", "both", "demo"] },
+  paymentMethod: { type: String, enum: ["wallet", "card", "demo"] },
   priceLockedAt: { type: Date, default: Date.now },
   priceLockExpiresAt: { type: Date },
   reservationExpiresAt: { type: Date },
