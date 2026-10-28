@@ -8,6 +8,8 @@ const productSchema = new Schema({
   description: { type: String, required: true },
   descriptionAr: { type: String, required: true },
   ticker: { type: String, required: true, unique: true },
+  type: { type: String, enum: ["share", "metal"], default: "share", required: true },
+  purity: { type: Number, default: null, min: 1 },
   category: { type: String, required: true },
   categoryAr: { type: String, required: true },
   sectorKey: { type: String, enum: SECTORS.map(sector => sector.id), required: true },

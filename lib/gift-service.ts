@@ -7,6 +7,7 @@ import { connectDB } from "@/lib/db";
 import { refreshPrices } from "@/lib/price-refresh";
 import { PaymentError } from "@/lib/payment-errors";
 import { companyLogoBgFor, companyLogoFor } from "@/lib/company-logos";
+import { isValidQuantity } from "@/lib/metal-units";
 
 type RawCompany = {
   _id?: Types.ObjectId;
@@ -16,6 +17,7 @@ type RawCompany = {
   image?: string;
   logoBg?: string;
   price?: number;
+  type?: "share" | "metal";
 } | null;
 type RawItem = { product?: RawCompany | Types.ObjectId | null; shares?: number; priceAtPurchase?: number };
 type RawGift = {
@@ -42,6 +44,7 @@ function companyFor(input: RawCompany | Types.ObjectId | null | undefined, curre
   const product = input as Exclude<RawCompany, null>;
   return {
     ticker: String(product.ticker),
+    type: product.type === "metal" ? "metal" as const : "share" as const,
     name: String(product.name ?? ""),
     nameAr: String(product.nameAr ?? ""),
     image: companyLogoFor(String(product.ticker), String(product.image ?? "")),
@@ -55,6 +58,7 @@ function giftItemsForView(gift: RawGift, includeCurrentValue: boolean) {
     const company = companyFor(item.product, includeCurrentValue);
     if (!company) return [];
     const shares = Number(item.shares ?? gift.shares ?? 0);
+    if (!isValidQuantity(company.type, shares)) return [];
     return [{
       company,
       shares,
@@ -69,8 +73,8 @@ export async function readMyGifts(buyerId: string) {
   await refreshPrices();
   const rows = await Gift.find({ $or: [{ buyer: new Types.ObjectId(buyerId) }, { redeemedBy: new Types.ObjectId(buyerId) }] })
     .select("order items product buyer redeemedBy shares priceAtPurchase occasion theme message recipientName status redeemedAt createdAt +codeEncrypted")
-    .populate({ path: "items.product", select: "ticker name nameAr image logoBg price" })
-    .populate({ path: "product", select: "ticker name nameAr image logoBg price" })
+    .populate({ path: "items.product", select: "ticker type name nameAr image logoBg price" })
+    .populate({ path: "product", select: "ticker type name nameAr image logoBg price" })
     .sort({ createdAt: -1, _id: -1 })
     .lean();
 
@@ -109,8 +113,8 @@ export async function readGiftForRedemption(input: unknown) {
   await connectDB();
   const gift = await Gift.findOne({ codeHash: hashGiftCode(code) })
     .select("items product shares recipientName message theme status")
-    .populate({ path: "items.product", select: "ticker name nameAr image logoBg" })
-    .populate({ path: "product", select: "ticker name nameAr image logoBg" })
+    .populate({ path: "items.product", select: "ticker type name nameAr image logoBg" })
+    .populate({ path: "product", select: "ticker type name nameAr image logoBg" })
     .lean();
   if (!gift) throw new PaymentError("giftUnavailable", 404);
   const items = giftItemsForView(gift as unknown as RawGift, false).map(item => ({
@@ -141,6 +145,8 @@ export async function redeemGift(input: unknown, userId: string) {
       const gift = await Gift.findOne({ codeHash, status: "active" })
         .select("items product shares priceAtPurchase")
         .session(session)
+        .populate({ path: "items.product", select: "type" })
+        .populate({ path: "product", select: "type" })
         .lean() as unknown as (RawGift & { _id: Types.ObjectId }) | null;
       if (!gift) return;
       const items = rawItems(gift);
@@ -152,7 +158,8 @@ export async function redeemGift(input: unknown, userId: string) {
           : String(item.product ?? "");
         const shares = Number(item.shares ?? gift.shares ?? 0);
         const costBasis = Number(item.priceAtPurchase ?? gift.priceAtPurchase ?? 0);
-        if (!Types.ObjectId.isValid(productId) || !Number.isSafeInteger(shares) || shares < 1 || !Number.isFinite(costBasis) || costBasis < 0) {
+        const productType = item.product && typeof item.product === "object" && "type" in item.product && item.product.type === "metal" ? "metal" : "share";
+        if (!Types.ObjectId.isValid(productId) || !isValidQuantity(productType, shares) || !Number.isFinite(costBasis) || costBasis < 0) {
           throw new PaymentError("giftUnavailable", 404);
         }
         const current = byProduct.get(productId) ?? { shares: 0, costBasis: 0 };
@@ -194,8 +201,8 @@ export async function readGiftCardForBuyer(giftId: string, buyerId: string) {
   await refreshPrices();
   const row = await Gift.findOne({ _id: giftId, buyer: new Types.ObjectId(buyerId) })
     .select("order items product shares priceAtPurchase occasion theme message recipientName status redeemedAt createdAt +codeEncrypted")
-    .populate({ path: "items.product", select: "ticker name nameAr image logoBg price" })
-    .populate({ path: "product", select: "ticker name nameAr image logoBg price" })
+    .populate({ path: "items.product", select: "ticker type name nameAr image logoBg price" })
+    .populate({ path: "product", select: "ticker type name nameAr image logoBg price" })
     .lean();
   if (!row) return null;
   const items = giftItemsForView(row as unknown as RawGift, true);

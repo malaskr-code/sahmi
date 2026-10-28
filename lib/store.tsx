@@ -23,10 +23,13 @@ function normalizeGift(value: unknown): Gift | null {
     if (!raw || typeof raw !== "object") continue;
     const item = raw as { product?: unknown; shares?: unknown };
     const product = item.product as Product | undefined;
-    if (!product || typeof product.id !== "string" || !product.id || !Number.isSafeInteger(item.shares) || Number(item.shares) < 1) continue;
+    const quantity = Number(item.shares);
+    const isMetal = product?.type === "metal";
+    if (!product || typeof product.id !== "string" || !product.id || !Number.isFinite(quantity) || quantity <= 0
+      || (isMetal ? Math.abs(quantity * 1000 - Math.round(quantity * 1000)) > 1e-7 : !Number.isSafeInteger(quantity))) continue;
     const existing = items.find(savedItem => savedItem.product.id === product.id);
-    if (existing) existing.shares = Number(item.shares);
-    else if (items.length < 5) items.push({ product, shares: Number(item.shares) });
+    if (existing) existing.shares = quantity;
+    else if (items.length < 5) items.push({ product: { ...product, type: product.type === "metal" ? "metal" : "share" }, shares: quantity });
   }
   if (!items.length) return null;
   const theme = CARD_THEME_IDS.includes(saved.theme as CardThemeId) ? saved.theme as CardThemeId : "general";

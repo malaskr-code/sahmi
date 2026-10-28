@@ -13,6 +13,7 @@ import { connectDB } from "@/lib/db";
 import Product from "@/models/Product";
 import User from "@/models/User";
 import { refreshPrices } from "@/lib/price-refresh";
+import { refreshMetalPrices } from "@/lib/metal-prices";
 import { isSectorKey, sectorDefinition } from "@/data/sectors";
 
 const NO_STORE = { "Cache-Control": "no-store" };
@@ -147,8 +148,12 @@ export async function POST(request: Request) {
     const parsed = await request.json().catch(() => null);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return json({ error: "invalidAction" }, 400);
     const body = parsed as Record<string, unknown>;
-    if (body.action !== "refreshPrices") return json({ error: "invalidAction" }, 400);
     await connectDB();
+    if (body.action === "refreshMetalPrices") {
+      const result = await refreshMetalPrices();
+      return json({ result, prices: await getAdminPrices() });
+    }
+    if (body.action !== "refreshPrices") return json({ error: "invalidAction" }, 400);
     const result = await refreshPrices();
     return json({ result, prices: await getAdminPrices() });
   } catch {

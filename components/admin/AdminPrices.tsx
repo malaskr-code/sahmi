@@ -20,6 +20,7 @@ export function AdminPrices() {
   const [data, setData] = useState<AdminPricesData>();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshingMetals, setRefreshingMetals] = useState(false);
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const [reload, setReload] = useState(0);
@@ -58,6 +59,26 @@ export function AdminPrices() {
     }
   }
 
+  async function refreshMetals() {
+    setRefreshingMetals(true);
+    setNotice(undefined);
+    setError(undefined);
+    try {
+      const result = await adminSend<RefreshResponse>("POST", { action: "refreshMetalPrices" });
+      setData(result.prices);
+      setNotice(
+        result.result === "refreshed" ? copy.prices.metalsRefreshDone
+          : result.result === "fresh" ? copy.prices.metalsStillFresh
+            : result.result === "cooldown" ? copy.prices.metalsCoolingDown
+              : copy.prices.metalsRefreshFailed,
+      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "serverError");
+    } finally {
+      setRefreshingMetals(false);
+    }
+  }
+
   if (loading && !data) return <AdminLoading />;
   if (error && !data) return <AdminError error={error} onRetry={() => setReload(value => value + 1)} />;
 
@@ -74,6 +95,10 @@ export function AdminPrices() {
             <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5">
               <p className="text-sm text-[var(--muted)]">{copy.prices.lastUpdated}</p>
               <p className="mt-3 text-lg font-semibold text-[var(--ink)]">{data.lastUpdatedAt ? formatAdminDate(data.lastUpdatedAt, lang) : copy.prices.neverUpdated}</p>
+            </article>
+            <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5">
+              <p className="text-sm text-[var(--muted)]">{copy.prices.metalLastUpdated}</p>
+              <p className="mt-3 text-lg font-semibold text-[var(--ink)]">{data.metalLastUpdatedAt ? formatAdminDate(data.metalLastUpdatedAt, lang) : copy.prices.metalNeverUpdated}</p>
             </article>
             <article className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5">
               <p className="text-sm text-[var(--muted)]">{copy.prices.market}</p>
@@ -102,6 +127,9 @@ export function AdminPrices() {
           </section>
           <button type="button" onClick={() => void refresh()} disabled={refreshing} className="min-h-12 rounded-xl bg-[var(--gold-dark)] px-5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60">
             {refreshing ? copy.prices.refreshing : copy.prices.refresh}
+          </button>
+          <button type="button" onClick={() => void refreshMetals()} disabled={refreshingMetals} className="ms-2 min-h-12 rounded-xl border border-[var(--gold-dark)] px-5 text-sm font-semibold text-[var(--gold-dark)] transition hover:bg-[var(--soft)] disabled:cursor-wait disabled:opacity-60">
+            {refreshingMetals ? copy.prices.refreshingMetals : copy.prices.refreshMetals}
           </button>
         </>
       )}

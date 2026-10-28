@@ -14,6 +14,7 @@ import { PaymentError } from "@/lib/payment-errors";
 import { connectDB } from "@/lib/db";
 import { signPriceQuote, verifyPriceQuote } from "@/lib/price-quote";
 import { findCheckoutProduct } from "@/lib/checkout-products";
+import { isValidQuantity, multiplyFilsByQuantity } from "@/lib/metal-units";
 
 const CHECKOUT_RESERVATION_SECONDS = 31 * 60;
 const PRICE_LOCK_MS = 10 * 60 * 1000;
@@ -35,7 +36,7 @@ function getGiftItems(input: Record<string, unknown>) {
     if (!isPlainRecord(value)) throw new PaymentError("invalidGift");
     const productId = typeof value.productId === "string" ? value.productId.trim() : "";
     const shares = value.shares;
-    if (!productId || productId.length > 100 || typeof shares !== "number" || !Number.isSafeInteger(shares) || shares < 1 || seen.has(productId)) {
+    if (!productId || productId.length > 100 || typeof shares !== "number" || !Number.isFinite(shares) || shares <= 0 || seen.has(productId)) {
       throw new PaymentError("invalidGift");
     }
     seen.add(productId);
@@ -85,7 +86,7 @@ async function persistWalletTransactions(order: {
   const paidFromWalletFils = sumKwdFils(order.paidFromWallet);
   if (!paidFromWalletFils) return;
 
-  const subtotalFils = order.items.reduce((sum, item) => sum + sumKwdFils(item.price) * item.shares, 0);
+  const subtotalFils = order.items.reduce((sum, item) => sum + multiplyFilsByQuantity(sumKwdFils(item.price), item.shares), 0);
   const giftPaymentFils = Math.min(subtotalFils, paidFromWalletFils);
   const feeFils = Math.min(SERVICE_FEE_FILS, Math.max(0, paidFromWalletFils - giftPaymentFils));
   const transactions = [];
@@ -123,7 +124,7 @@ async function createGiftForOrder(order: {
   const items = order.items.map(orderItem => ({
     product: orderItem.product,
     shares: orderItem.shares,
-    priceAtPurchase: orderItem.price * orderItem.shares,
+    priceAtPurchase: filsToKwd(multiplyFilsByQuantity(sumKwdFils(orderItem.price), orderItem.shares)),
   }));
   const gift = new Gift({
     order: order._id,
@@ -155,7 +156,7 @@ async function finalizeDemoOrder(orderId: Types.ObjectId, session: ClientSession
   if (!order) throw new PaymentError("checkoutUnavailable", 409);
 
   const subtotalFils = order.items.reduce(
-    (sum: number, item: { price: number; shares: number }) => sum + sumKwdFils(item.price) * item.shares,
+    (sum: number, item: { price: number; shares: number }) => sum + multiplyFilsByQuantity(sumKwdFils(item.price), item.shares),
     0,
   );
   if (
@@ -206,7 +207,7 @@ async function finalizePendingOrder(
   }
 
   const subtotalFils = order.items.reduce(
-    (sum: number, item: { price: number; shares: number }) => sum + sumKwdFils(item.price) * item.shares,
+    (sum: number, item: { price: number; shares: number }) => sum + multiplyFilsByQuantity(sumKwdFils(item.price), item.shares),
     0,
   );
   const feeFils = sumKwdFils(order.fee);
@@ -253,12 +254,15 @@ export async function prepareGiftPriceQuote(userId: string, input: unknown) {
   ) throw new PaymentError("invalidGift");
 
   const products = await Promise.all(items.map(item => findCheckoutProduct(item.productId, { refreshPrice: true })));
+  items.forEach((item, index) => {
+    if (!isValidQuantity(products[index].type === "metal" ? "metal" : "share", item.shares)) throw new PaymentError("invalidGift");
+  });
   const pricedItems = items.map((item, index) => ({
     productId: item.productId,
     shares: item.shares,
     unitPriceFils: sumKwdFils(Number(products[index].price)),
   }));
-  const subtotalFils = pricedItems.reduce((sum, item) => sum + item.unitPriceFils * item.shares, 0);
+  const subtotalFils = pricedItems.reduce((sum, item) => sum + multiplyFilsByQuantity(item.unitPriceFils, item.shares), 0);
   const totalFils = subtotalFils + SERVICE_FEE_FILS;
   if (!Number.isSafeInteger(totalFils) || totalFils > MAX_PAYMENT_AMOUNT_FILS) throw new PaymentError("invalidAmount");
   const [balanceFils, reservedFils] = payment === "demo"
@@ -277,7 +281,7 @@ export async function prepareGiftPriceQuote(userId: string, input: unknown) {
         productId: item.productId,
         shares: item.shares,
         unitPrice: filsToKwd(item.unitPriceFils),
-        subtotal: filsToKwd(item.unitPriceFils * item.shares),
+        subtotal: filsToKwd(multiplyFilsByQuantity(item.unitPriceFils, item.shares)),
       })),
       subtotal: filsToKwd(subtotalFils),
       fee: filsToKwd(SERVICE_FEE_FILS),
@@ -367,12 +371,15 @@ export async function startGiftCheckout(user: { id: string; email: string; name?
   if (!priceQuote) throw new PaymentError("priceQuoteExpired", 409);
   if (!process.env.CODE_SECRET) throw new PaymentError("checkoutUnavailable", 503);
   const products = await Promise.all(gift.items.map(item => findCheckoutProduct(item.productId)));
+  gift.items.forEach((item, index) => {
+    if (!isValidQuantity(products[index].type === "metal" ? "metal" : "share", item.shares)) throw new PaymentError("invalidGift");
+  });
   const orderItems = gift.items.map((item, index) => ({
     product: products[index],
     shares: item.shares,
     priceFils: priceQuote.items[index].unitPriceFils,
   }));
-  const subtotalFils = orderItems.reduce((sum, item) => sum + item.priceFils * item.shares, 0);
+  const subtotalFils = orderItems.reduce((sum, item) => sum + multiplyFilsByQuantity(item.priceFils, item.shares), 0);
   const totalFils = subtotalFils + SERVICE_FEE_FILS;
   const cardFilsFromQuote = totalFils - priceQuote.walletFils;
   const expectedWalletFils = gift.payment === "wallet" ? totalFils : 0;
@@ -456,7 +463,7 @@ export async function startGiftCheckout(user: { id: string; email: string; name?
         productId: gift.items[index].productId,
         shares: item.shares,
         unitPrice: filsToKwd(item.priceFils),
-        subtotal: filsToKwd(item.priceFils * item.shares),
+        subtotal: filsToKwd(multiplyFilsByQuantity(item.priceFils, item.shares)),
       })),
       subtotal: filsToKwd(subtotalFils),
       fee: filsToKwd(SERVICE_FEE_FILS),

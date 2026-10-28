@@ -9,7 +9,7 @@ async function refreshIfStale(): Promise<PriceRefreshResult> {
   if (!process.env.KUWAIT_STOCK_API_KEY) {
     throw new Error("KUWAIT_STOCK_API_KEY is missing. Add it in Replit Secrets.");
   }
-  const oldest = await Product.findOne({ active: true }).sort({ priceUpdatedAt: 1 }).lean();
+  const oldest = await Product.findOne({ active: true, type: { $ne: "metal" } }).sort({ priceUpdatedAt: 1 }).lean();
   if (!oldest || (oldest.priceUpdatedAt && Date.now() - new Date(oldest.priceUpdatedAt).getTime() <= PRICE_REFRESH_MS)) return "fresh";
 
   const id = "kuwait-quotes";
@@ -33,7 +33,7 @@ async function refreshIfStale(): Promise<PriceRefreshResult> {
 
   try {
     // Recheck inside the lease in case another instance completed a refresh.
-    const products = await Product.find({ active: true }).select("ticker priceUpdatedAt").lean();
+    const products = await Product.find({ active: true, type: { $ne: "metal" } }).select("ticker priceUpdatedAt").lean();
     if (!products.some(p => !p.priceUpdatedAt || Date.now() - new Date(p.priceUpdatedAt).getTime() > PRICE_REFRESH_MS)) return "fresh";
     const quotes = await fetchQuotes(products.map(p => p.ticker));
     await Product.bulkWrite(quotes.map(quote => ({

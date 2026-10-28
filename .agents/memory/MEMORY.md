@@ -1,5 +1,6 @@
 - [Sahmi presentation](sahmi-presentation.md) — keep demo/test-money labels out of visible copy without expanding the financial functionality.
 - [Stock API quota](stock-api-quota.md) — the small oanor allowance requires batched, infrequent server-side refreshes, including failure cooldowns.
+- [Metal pricing source and attribution](metal-pricing-source.md) — XAU/XAG spot prices are converted from USD per troy ounce; keep refreshes 30 minutes apart and credit the FX provider.
 - [Preview session cookies](session-cookies.md) — secure cross-site session cookies need `SameSite=None` for embedded Replit previews.
 - [Wallet ledger invariants](wallet-ledger.md) — derive wallet balance from transaction entries; reserve funds for pending gift checkouts and finalize atomically.
 - [Tap KWD card charges](tap-kwd-card-charges.md) — Tap supports native KWD charges, so don't apply the old Stripe USD conversion to card payments.

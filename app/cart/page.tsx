@@ -9,6 +9,8 @@ import { useProducts } from "@/lib/use-products";
 import { ProductFeedback } from "@/components/ProductFeedback";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { sectorLabel } from "@/data/sectors";
+import { ExchangeRateAttribution } from "@/components/ExchangeRateAttribution";
+import { formatQuantity } from "@/lib/metal-units";
 
 export default function CartPage() {
   const { t, lang, gift, setGift, ready } = useStore();
@@ -64,13 +66,13 @@ export default function CartPage() {
               <button type="button" onClick={() => removeCompany(product.id)} aria-label={`${t.cart.removeCompany}: ${name}`} className="outline-button !px-3 !py-2 text-xs text-[var(--red)]"><Trash2 size={14}/>{t.cart.removeCompany}</button>
             </div>
             <div className="grid gap-5 pt-5 sm:grid-cols-3">
-              <div><p className="text-xs text-[var(--muted)]">{t.cart.price}</p><p className="mt-1 font-semibold">{currency(product.price)}</p></div>
+              <div><p className="text-xs text-[var(--muted)]">{product.type === "metal" ? lang === "ar" ? "السعر لكل غرام" : "Price per gram" : t.cart.price}</p><p className="mt-1 font-semibold">{currency(product.price)}{product.type === "metal" && <span dir="ltr" className="ms-1 text-xs font-normal text-[var(--muted)]">{lang === "ar" ? "/ غ" : "/ g"}</span>}</p>{product.type === "metal" && <ExchangeRateAttribution />}</div>
               <div>
-                <p className="text-xs text-[var(--muted)]">{t.cart.shares}</p>
+                <p className="text-xs text-[var(--muted)]">{product.type === "metal" ? lang === "ar" ? "غرامات" : "Grams" : t.cart.shares}</p>
                 <div className="mt-1 flex w-fit items-center gap-4 rounded-full border border-[var(--line)] px-2 py-1">
-                  <button type="button" aria-label={t.common.decrease} disabled={shares <= 1} onClick={() => updateShares(product.id, Math.max(1, shares - 1))} className="disabled:opacity-40"><Minus size={14}/></button>
-                  <span className="min-w-5 text-center font-semibold">{shares}</span>
-                  <button type="button" aria-label={t.common.increase} onClick={() => updateShares(product.id, shares + 1)}><Plus size={14}/></button>
+                  <button type="button" aria-label={t.common.decrease} disabled={shares <= (product.type === "metal" ? 0.001 : 1)} onClick={() => updateShares(product.id, product.type === "metal" ? Math.max(0.001, Math.round((shares - 0.001) * 1000) / 1000) : Math.max(1, shares - 1))} className="disabled:opacity-40"><Minus size={14}/></button>
+                  <span className="min-w-5 text-center font-semibold">{formatQuantity(shares, product.type, lang)}</span>
+                  <button type="button" aria-label={t.common.increase} onClick={() => updateShares(product.id, product.type === "metal" ? Math.round((shares + 0.001) * 1000) / 1000 : shares + 1)}><Plus size={14}/></button>
                 </div>
               </div>
               <div><p className="text-xs text-[var(--muted)]">{t.cart.subtotal}</p><p className="mt-1 font-semibold">{currency(shares * product.price)}</p></div>
@@ -87,11 +89,12 @@ export default function CartPage() {
       <aside className="card h-fit p-6 lg:sticky lg:top-28">
         <h2 className="font-display text-2xl font-semibold">{t.cart.total}</h2>
         <div className="mt-5 space-y-4 border-b border-[var(--line)] pb-5 text-sm">
-          {cartItems.map(({ product, shares }) => <div key={product.id} className="flex justify-between gap-3"><span className="min-w-0 truncate text-[var(--muted)]">{lang === "ar" ? product.nameAr : product.name} · {shares}</span><span className="shrink-0">{currency(shares * product.price)}</span></div>)}
+          {cartItems.map(({ product, shares }) => <div key={product.id} className="flex justify-between gap-3"><span className="min-w-0 truncate text-[var(--muted)]">{lang === "ar" ? product.nameAr : product.name} · {formatQuantity(shares, product.type, lang)}</span><span className="shrink-0">{currency(shares * product.price)}</span></div>)}
           <div className="flex justify-between"><span className="text-[var(--muted)]">{t.cart.subtotal}</span><span>{currency(subtotal)}</span></div>
           <div className="flex justify-between"><span className="text-[var(--muted)]">{t.cart.fee}</span><span>{currency(SERVICE_FEE)}</span></div>
         </div>
         <div className="flex justify-between py-5 text-base font-bold"><span>{t.cart.total}</span><span>{currency(subtotal + SERVICE_FEE)}</span></div>
+        {cartItems.some(item => item.product.type === "metal") && <ExchangeRateAttribution />}
         <Link href="/checkout" className="gold-button w-full">{t.cart.checkout}<ArrowRight size={16}/></Link>
       </aside>
     </div>

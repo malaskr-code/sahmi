@@ -39,6 +39,14 @@ export const SECTORS = [
     categoryAr: "التقنية والخدمات",
     aliases: ["technology & services", "education", "financial services", "التعليم", "الخدمات المالية", "التقنية والخدمات"],
   },
+  {
+    id: "gold-silver",
+    labelEn: "Gold & Silver",
+    labelAr: "الذهب والفضة",
+    category: "Gold & Silver",
+    categoryAr: "الذهب والفضة",
+    aliases: ["gold & silver", "metals", "ذهب", "فضة", "الذهب والفضة"],
+  },
 ] as const;
 
 export type SectorKey = (typeof SECTORS)[number]["id"];

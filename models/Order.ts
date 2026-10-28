@@ -5,7 +5,7 @@ const orderSchema = new Schema({
   type: { type: String, enum: ["gift", "topup"], required: true },
   items: [{
     product: { type: Schema.Types.ObjectId, ref: "Product", required: true },
-    shares: { type: Number, required: true, min: 1, validate: Number.isInteger },
+    shares: { type: Number, required: true, min: 0.001 },
     price: { type: Number, required: true, min: 0 },
     occasion: { type: String },
     theme: { type: String },

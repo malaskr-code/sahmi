@@ -13,6 +13,8 @@ import { MarketStatus } from "@/components/MarketStatus";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { useStore } from "@/lib/store";
 import { sectorLabel } from "@/data/sectors";
+import { ExchangeRateAttribution } from "@/components/ExchangeRateAttribution";
+import { formatQuantity } from "@/lib/metal-units";
 
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
@@ -27,6 +29,14 @@ export default function ProductDetailPage() {
   const [theme, setTheme] = useState<CardThemeId>("general");
   const [added, setAdded] = useState(false);
   const [addError, setAddError] = useState("");
+  const isMetal = product?.type === "metal";
+  const unitLabel = isMetal ? (lang === "ar" ? "غرامات" : "Grams") : t.product.shares;
+  const step = isMetal ? 0.001 : 1;
+  const presets = isMetal ? product?.ticker === "XAG" ? [10, 50, 100] : [1, 5, 10] : [10, 50, 100];
+
+  useEffect(() => {
+    if (product) setShares(product.type === "metal" && product.ticker !== "XAG" ? 1 : 10);
+  }, [product?.id]);
 
   useEffect(() => {
     const savedItem = gift?.items.find(item => item.product.id === product?.id);
@@ -43,10 +53,12 @@ export default function ProductDetailPage() {
   const count =
     mode === "shares"
       ? custom
-        ? Math.max(0, Math.floor(Number(custom) || 0))
+        ? isMetal ? Math.max(0, Math.floor((Number(custom) || 0) * 1000) / 1000) : Math.max(0, Math.floor(Number(custom) || 0))
         : shares
       : product
-        ? Math.max(0, Math.floor((Number(budget) || 0) / product.price))
+        ? isMetal
+          ? Math.max(0, Math.floor(((Number(budget) || 0) / product.price) * 1000) / 1000)
+          : Math.max(0, Math.floor((Number(budget) || 0) / product.price))
         : 0;
   const subtotal = product ? count * product.price : 0;
   const total = subtotal + SERVICE_FEE;
@@ -55,7 +67,7 @@ export default function ProductDetailPage() {
   const currency = (amount: number) => formatKwd(amount, lang);
 
   const add = () => {
-    if (!product || count < 1 || !hasPickedAmount) return;
+    if (!product || count <= 0 || !hasPickedAmount) return;
     const items = gift?.items ?? [];
     const existing = items.some(item => item.product.id === product.id);
     if (!existing && items.length >= 5) {
@@ -73,7 +85,7 @@ export default function ProductDetailPage() {
   };
 
   const buyNow = () => {
-    if (!product || count < 1 || !hasPickedAmount) return;
+    if (!product || count <= 0 || !hasPickedAmount) return;
     const params = new URLSearchParams({ buyNow: product.id, shares: String(count), theme });
     router.push(`/checkout?${params.toString()}`);
   };
@@ -108,13 +120,13 @@ export default function ProductDetailPage() {
           </p>
           <div className="mt-8 flex flex-wrap items-end gap-x-8 gap-y-4 border-t border-[var(--line)] pt-6">
             <div>
-              <p className="text-xs text-[var(--muted)]">{t.common.samplePrice}</p>
-              <p className="mt-1 text-2xl font-bold">{currency(product.price)}</p>
+              <p className="text-xs text-[var(--muted)]">{isMetal ? lang === "ar" ? "السعر لكل غرام" : "Price per gram" : t.common.samplePrice}</p>
+              <p className="mt-1 text-2xl font-bold">{currency(product.price)}{isMetal && <span dir="ltr" className="ms-1 text-sm font-medium text-[var(--muted)]">{lang === "ar" ? "/ غ" : "/ g"}</span>}</p>
+              {isMetal && <ExchangeRateAttribution />}
             </div>
-            <p className={`text-sm font-semibold ${product.change >= 0 ? "text-[var(--green)]" : "text-[var(--red)]"}`}>
-              {product.change >= 0 ? "+" : ""}
-              {product.change.toFixed(2)}% <span className="text-[var(--muted)]">{t.common.change}</span>
-            </p>
+            {!isMetal && <p className={`text-sm font-semibold ${product.change >= 0 ? "text-[var(--green)]" : "text-[var(--red)]"}`}>
+              {product.change >= 0 ? "+" : ""}{product.change.toFixed(2)}% <span className="text-[var(--muted)]">{t.common.change}</span>
+            </p>}
           </div>
           <MarketStatus products={[product]} />
         </div>
@@ -126,7 +138,7 @@ export default function ProductDetailPage() {
               onClick={() => setMode("shares")}
               className={`rounded-full px-3 py-2 text-sm font-semibold transition ${mode === "shares" ? "bg-[var(--paper)] shadow-sm" : ""}`}
             >
-              {t.product.byShares}
+              {isMetal ? lang === "ar" ? "حسب الغرامات" : "By grams" : t.product.byShares}
             </button>
             <button
               onClick={() => setMode("budget")}
@@ -138,9 +150,9 @@ export default function ProductDetailPage() {
 
           {mode === "shares" ? (
             <div className="mt-5">
-              <label className="text-sm font-semibold">{t.product.quantity}</label>
+               <label className="text-sm font-semibold">{isMetal ? unitLabel : t.product.quantity}</label>
               <div className="mt-3 flex gap-2">
-                {[10, 50, 100].map((quantity) => (
+                 {presets.map((quantity) => (
                   <button
                     key={quantity}
                     onClick={() => {
@@ -152,19 +164,22 @@ export default function ProductDetailPage() {
                       shares === quantity && !custom ? "border-[var(--gold)] bg-[var(--gold)]/15" : "border-[var(--line)]"
                     }`}
                   >
-                    {quantity}
+                     {isMetal ? `${quantity} g` : quantity}
                   </button>
                 ))}
               </div>
-              <label htmlFor="custom-shares" className="mt-4 block text-xs text-[var(--muted)]">
-                {t.product.custom}
+               <label htmlFor="custom-shares" className="mt-4 block text-xs text-[var(--muted)]">
+                 {isMetal ? lang === "ar" ? "كمية مخصصة (حتى 3 منازل عشرية)" : "Custom amount (up to 3 decimals)" : t.product.custom}
               </label>
               <div className="mt-2 flex items-center rounded-lg border border-[var(--line)] px-3">
                 <button
                   aria-label={t.common.decrease}
                   onClick={() => {
                     setCustom("");
-                    setShares((value) => Math.max(1, value - 1));
+                     if (isMetal) {
+                       const value = Number(custom || shares);
+                       setCustom(String(Math.max(0.001, Math.round((value - step) * 1000) / 1000)));
+                     } else setShares((value) => Math.max(1, value - 1));
                     setSharesPicked(true);
                   }}
                 >
@@ -173,7 +188,8 @@ export default function ProductDetailPage() {
                 <input
                   id="custom-shares"
                   type="number"
-                  min="1"
+                  min={step}
+                  step={step}
                   value={custom || shares}
                   onChange={(event) => {
                     setCustom(event.target.value);
@@ -186,7 +202,10 @@ export default function ProductDetailPage() {
                   aria-label={t.common.increase}
                   onClick={() => {
                     setCustom("");
-                    setShares((value) => value + 1);
+                     if (isMetal) {
+                       const value = Number(custom || shares);
+                       setCustom(String(Math.round((value + step) * 1000) / 1000));
+                     } else setShares((value) => value + 1);
                     setSharesPicked(true);
                   }}
                 >
@@ -211,7 +230,7 @@ export default function ProductDetailPage() {
                 <span className="text-xs text-[var(--muted)]">{t.common.kwd}</span>
               </div>
               <p className="mt-2 text-xs text-[var(--muted)]">
-                {t.product.shares}: <strong className="text-[var(--ink)]">{count}</strong>
+                 {unitLabel}: <strong className="text-[var(--ink)]">{formatQuantity(count, isMetal ? "metal" : "share", lang)}</strong>
               </p>
             </div>
           )}
@@ -244,14 +263,14 @@ export default function ProductDetailPage() {
           )}
 
           <div className="mt-6 space-y-3 border-t border-[var(--line)] pt-5 text-sm">
-            <div className="flex justify-between"><span className="text-[var(--muted)]">{t.product.shares}</span><span>{count}</span></div>
+            <div className="flex justify-between"><span className="text-[var(--muted)]">{unitLabel}</span><span>{formatQuantity(count, isMetal ? "metal" : "share", lang)}</span></div>
             <div className="flex justify-between"><span className="text-[var(--muted)]">{t.product.subtotal}</span><span>{currency(subtotal)}</span></div>
             <div className="flex justify-between"><span className="text-[var(--muted)]">{t.product.fee}</span><span>{currency(SERVICE_FEE)}</span></div>
             <div className="flex justify-between border-t border-[var(--line)] pt-3 text-base font-bold">
               <span>{t.product.total}</span><span>{currency(total)}</span>
             </div>
           </div>
-          {count < 1 && (custom !== "" || budget !== "") && (
+          {count <= 0 && (custom !== "" || budget !== "") && (
             <p role="alert" className="mt-3 text-xs font-medium text-[var(--red)]">{t.product.outOfRange}</p>
           )}
           <p className="mt-3 text-xs leading-5 text-[var(--muted)]">{t.product.feeNote}</p>
@@ -260,7 +279,7 @@ export default function ProductDetailPage() {
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <button
               type="button"
-              disabled={count < 1 || !hasPickedAmount}
+              disabled={count <= 0 || !hasPickedAmount}
               onClick={add}
               className="outline-button w-full disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -268,7 +287,7 @@ export default function ProductDetailPage() {
             </button>
             <button
               type="button"
-              disabled={count < 1 || !hasPickedAmount}
+              disabled={count <= 0 || !hasPickedAmount}
               onClick={buyNow}
               className="gold-button w-full disabled:cursor-not-allowed disabled:opacity-50"
             >

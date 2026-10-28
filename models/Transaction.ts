@@ -5,7 +5,7 @@ const transactionSchema = new Schema({
   type: { type: String, enum: ["topup", "gift_payment", "sale", "fee"], required: true },
   amount: { type: Number, required: true, validate: { validator: Number.isFinite, message: "Amount must be finite." } },
   reference: { type: String, required: true, maxlength: 180 },
-  order: { type: Schema.Types.ObjectId, ref: "Order", required: true },
+  order: { type: Schema.Types.ObjectId, ref: "Order", default: null },
   idempotencyKey: { type: String, required: true, unique: true },
   createdAt: { type: Date, default: Date.now },
 });

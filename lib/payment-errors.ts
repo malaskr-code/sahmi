@@ -16,7 +16,9 @@ export type PaymentErrorCode =
   | "sessionPending"
   | "sessionInvalid"
   | "giftUnavailable"
-  | "giftRedeemed";
+  | "giftRedeemed"
+  | "invalidMetalQuantity"
+  | "insufficientMetal";
 
 export class PaymentError extends Error {
   constructor(readonly code: PaymentErrorCode, readonly status = 400) {
@@ -43,6 +45,8 @@ const messages: Record<"en" | "ar", Record<PaymentErrorCode, string>> = {
     sessionInvalid: "We could not verify this payment. Please contact support before trying again.",
     giftUnavailable: "This gift code is invalid or has already been redeemed.",
     giftRedeemed: "This gift has already been redeemed.",
+    invalidMetalQuantity: "Enter a valid amount of metal in grams, up to three decimal places.",
+    insufficientMetal: "You don't have enough grams of this metal to sell.",
   },
   ar: {
     invalidRequest: "الطلب غير صالح. تحقق من البيانات وحاول مرة أخرى.",
@@ -61,6 +65,8 @@ const messages: Record<"en" | "ar", Record<PaymentErrorCode, string>> = {
     sessionInvalid: "تعذر التحقق من هذا الدفع. يرجى التواصل مع الدعم قبل المحاولة مجدداً.",
     giftUnavailable: "رمز الهدية غير صالح أو تم استرداده مسبقاً.",
     giftRedeemed: "تم استرداد هذه الهدية مسبقاً.",
+    invalidMetalQuantity: "أدخل كمية صحيحة بالغرام، حتى ثلاث منازل عشرية.",
+    insufficientMetal: "لا تملك كمية كافية من هذا المعدن للبيع.",
   },
 };
 

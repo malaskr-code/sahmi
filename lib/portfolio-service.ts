@@ -2,13 +2,15 @@ import { Types } from "mongoose";
 import Holding from "@/models/Holding";
 import { connectDB } from "@/lib/db";
 import { refreshPrices } from "@/lib/price-refresh";
+import { refreshMetalPrices } from "@/lib/metal-prices";
 import { companyLogoBgFor, companyLogoFor } from "@/lib/company-logos";
 
 export async function readPortfolio(userId: string) {
   await connectDB();
   await refreshPrices();
+  await refreshMetalPrices();
   const rows = await Holding.find({ user: new Types.ObjectId(userId), shares: { $gt: 0 } })
-    .populate({ path: "product", select: "ticker name nameAr image logoBg price sectorKey" })
+    .populate({ path: "product", select: "ticker type purity name nameAr image logoBg price sectorKey" })
     .sort({ updatedAt: -1, _id: 1 })
     .lean();
   const holdings = rows.flatMap(row => {
@@ -21,6 +23,8 @@ export async function readPortfolio(userId: string) {
       logoBg: string;
       price: number;
       sectorKey?: string;
+      type?: string;
+      purity?: number | null;
     } | null;
     if (!product) return [];
     const shares = Number(row.shares);
@@ -29,6 +33,8 @@ export async function readPortfolio(userId: string) {
     return [{
       product: {
         id: String(product._id),
+        type: product.type === "metal" ? "metal" as const : "share" as const,
+        purity: product.purity ?? null,
         ticker: String(product.ticker),
         name: String(product.name),
         nameAr: String(product.nameAr),

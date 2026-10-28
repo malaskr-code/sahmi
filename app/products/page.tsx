@@ -4,6 +4,7 @@ import { Suspense, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Building2,
+  Coins,
   Landmark,
   Monitor,
   Radio,
@@ -23,6 +24,7 @@ const sectorIcons = {
   "real-estate": Building2,
   "logistics-industry": Truck,
   "technology-services": Monitor,
+  "gold-silver": Coins,
 };
 
 function ProductsContent() {

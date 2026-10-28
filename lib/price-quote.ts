@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { CardThemeId } from "@/data/cardThemes";
+import { quantityToMilli } from "@/lib/metal-units";
 
 const PRICE_LOCK_MS = 10 * 60 * 1000;
 
@@ -10,7 +11,7 @@ export type QuoteItemPayload = {
 };
 
 type QuotePayload = {
-  version: 5;
+  version: 6;
   userId: string;
   items: QuoteItemPayload[];
   payment: "wallet" | "card" | "demo";
@@ -30,7 +31,7 @@ function signature(payload: string) {
 }
 
 export function signPriceQuote(input: Omit<QuotePayload, "version">) {
-  const payload = Buffer.from(JSON.stringify({ ...input, version: 5 }), "utf8").toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ ...input, version: 6 }), "utf8").toString("base64url");
   const digest = signature(payload).toString("base64url");
   return `${payload}.${digest}`;
 }
@@ -55,7 +56,7 @@ export function verifyPriceQuote(
   try {
     const payload = JSON.parse(Buffer.from(payloadText, "base64url").toString("utf8")) as QuotePayload;
     if (
-      payload.version !== 5 ||
+      payload.version !== 6 ||
       payload.userId !== expected.userId ||
       !Array.isArray(payload.items) ||
       payload.items.length < 1 || payload.items.length > 5 ||
@@ -71,7 +72,7 @@ export function verifyPriceQuote(
     const seen = new Set<string>();
     if (payload.items.length !== expected.items.length || payload.items.some((item, index) => {
       if (!item || typeof item.productId !== "string" || !item.productId || item.productId.length > 100
-        || !Number.isSafeInteger(item.shares) || item.shares < 1
+        || quantityToMilli(item.shares) === null
         || !Number.isSafeInteger(item.unitPriceFils) || item.unitPriceFils <= 0
         || item.productId !== expected.items[index]?.productId
         || item.shares !== expected.items[index]?.shares

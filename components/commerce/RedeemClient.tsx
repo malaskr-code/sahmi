@@ -6,10 +6,11 @@ import { ArrowRight, Check, Gift, LockKeyhole } from "lucide-react";
 import { useAuth } from "@/lib/auth-client";
 import { useCommerce, ErrorPanel, responseError } from "./shared";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { formatQuantity } from "@/lib/metal-units";
 
 type Preview = {
   items: Array<{
-    company: { ticker: string; name: string; nameAr: string; image: string; logoBg: string };
+    company: { ticker: string; type: "share" | "metal"; name: string; nameAr: string; image: string; logoBg: string };
     shares: number;
   }>;
   recipientName: string; message: string; theme: string; status: string;
@@ -81,7 +82,7 @@ export default function RedeemClient({ code }: { code: string }) {
                     return <li key={item.company.ticker} className="flex flex-wrap items-center gap-3 py-3 first:pt-1">
                       <CompanyLogo src={item.company.image} name={name} logoBg={item.company.logoBg} className="h-12 w-12 shrink-0 rounded-xl"/>
                       <div className="min-w-0 flex-1"><h2 className="font-display truncate text-xl font-semibold md:text-2xl">{name}</h2><p dir="ltr" className="mt-1 text-xs font-semibold tracking-widest opacity-70">{item.company.ticker}</p></div>
-                      <div className="rounded-full border border-current/20 px-4 py-2 text-xs font-semibold">{item.shares} {copy.redeem.shares}</div>
+                      <div className="rounded-full border border-current/20 px-4 py-2 text-xs font-semibold">{item.company.type === "metal" ? `${formatQuantity(item.shares, "metal", lang)} ${lang === "ar" ? "من" : "of"} ${name}` : `${item.shares} ${copy.redeem.shares}`}</div>
                     </li>;
                   })}
                 </ul>

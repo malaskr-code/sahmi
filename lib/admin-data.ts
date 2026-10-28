@@ -1,5 +1,6 @@
 import mongoose, { Types } from "mongoose";
 import ApiCallLog from "@/models/ApiCallLog";
+import MetalPrice from "@/models/MetalPrice";
 import Gift from "@/models/Gift";
 import Order from "@/models/Order";
 import Product from "@/models/Product";
@@ -162,7 +163,7 @@ export async function getAdminOverview() {
 
 export async function getAdminCompanies(): Promise<AdminCompany[]> {
   const products = await Product.find({})
-    .select("_id slug ticker name nameAr description descriptionAr category categoryAr sectorKey image logoBg price active priceUpdatedAt")
+    .select("_id slug ticker type name nameAr description descriptionAr category categoryAr sectorKey image logoBg price active priceUpdatedAt")
     .sort({ name: 1, _id: 1 })
     .lean();
   return products.map(product => {
@@ -170,6 +171,7 @@ export async function getAdminCompanies(): Promise<AdminCompany[]> {
     const definition = sectorDefinition(sectorKey)!;
     return {
     id: String(product._id),
+    type: product.type === "metal" ? "metal" as const : "share" as const,
     slug: String(product.slug ?? ""),
     ticker: String(product.ticker),
     name: String(product.name ?? ""),
@@ -201,9 +203,10 @@ export async function getAdminPrices(): Promise<AdminPricesData> {
   const now = new Date();
   const monthKey = `${kuwaitDateKey(now).slice(0, 7)}-01T00:00:00+03:00`;
   const monthStart = new Date(monthKey);
-  const [products, callsThisMonth] = await Promise.all([
+  const [products, callsThisMonth, latestMetal] = await Promise.all([
     Product.find({}).select("priceUpdatedAt active").lean(),
     ApiCallLog.countDocuments({ provider: "oanor", calledAt: { $gte: monthStart } }),
+    MetalPrice.findOne({}).sort({ refreshedAt: -1 }).select("refreshedAt").lean(),
   ]);
   const latest = products.reduce<number | null>((latestTime, product) => {
     if (!product.priceUpdatedAt) return latestTime;
@@ -212,6 +215,7 @@ export async function getAdminPrices(): Promise<AdminPricesData> {
   }, null);
   return {
     lastUpdatedAt: latest === null ? null : new Date(latest).toISOString(),
+    metalLastUpdatedAt: latestMetal?.refreshedAt ? new Date(latestMetal.refreshedAt).toISOString() : null,
     marketStatus: currentMarketStatus(now),
     callsThisMonth,
     monthlyLimit: monthlyLimit(),

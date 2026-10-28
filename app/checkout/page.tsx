@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import CheckoutClient from "@/components/commerce/CheckoutClient";
 import { CARD_THEME_IDS, type CardThemeId } from "@/data/cardThemes";
+import { quantityToMilli } from "@/lib/metal-units";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -10,7 +11,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Sea
   const rawShares = typeof params.shares === "string" ? Number(params.shares) : 0;
   const rawTheme = typeof params.theme === "string" ? params.theme : "general";
   const buyNow = /^[a-zA-Z0-9_-]{1,100}$/.test(rawProductId)
-    && Number.isSafeInteger(rawShares) && rawShares > 0
+    && quantityToMilli(rawShares) !== null
     && CARD_THEME_IDS.includes(rawTheme as CardThemeId)
     ? { productId: rawProductId, shares: rawShares, theme: rawTheme as CardThemeId }
     : null;

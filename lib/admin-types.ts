@@ -14,6 +14,7 @@ export type AdminOrderCompany = {
 
 export type AdminCompany = {
   id: string;
+  type: "share" | "metal";
   slug: string;
   ticker: string;
   name: string;
@@ -84,6 +85,7 @@ export type AdminOverviewData = {
 
 export type AdminPricesData = {
   lastUpdatedAt: string | null;
+  metalLastUpdatedAt: string | null;
   marketStatus: "open" | "closed";
   callsThisMonth: number;
   monthlyLimit: number;

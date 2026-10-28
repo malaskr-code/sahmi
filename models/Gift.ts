@@ -6,12 +6,12 @@ const giftSchema = new Schema({
   buyer: { type: Schema.Types.ObjectId, ref: "User", required: true },
   // These top-level fields are retained for gifts created before multi-company boxes.
   product: { type: Schema.Types.ObjectId, ref: "Product", default: null },
-  shares: { type: Number, min: 1, validate: Number.isInteger },
+  shares: { type: Number, min: 0.001 },
   priceAtPurchase: { type: Number, min: 0 },
   items: {
     type: [{
       product: { type: Schema.Types.ObjectId, ref: "Product", required: true },
-      shares: { type: Number, required: true, min: 1, validate: Number.isInteger },
+      shares: { type: Number, required: true, min: 0.001 },
       priceAtPurchase: { type: Number, required: true, min: 0 },
     }],
     default: [],

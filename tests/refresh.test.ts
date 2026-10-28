@@ -6,6 +6,8 @@ import { refreshPrices } from "../lib/price-refresh";
 import { PRICE_REFRESH_MS } from "../lib/quotes";
 import { seedProducts } from "../scripts/seed-data";
 
+const stockProducts = seedProducts.filter(product => product.type !== "metal");
+
 test("fresh products do not call the quote API or acquire a lease", async () => {
   mock.method(Product, "findOne", () => ({ sort: () => ({ lean: async () => ({ priceUpdatedAt: new Date() }) }) }));
   const fetchMock = mock.method(globalThis, "fetch", async () => { throw new Error("Unexpected network call"); });
@@ -16,7 +18,7 @@ test("fresh products do not call the quote API or acquire a lease", async () => 
 test("concurrent readers refresh all 12 symbols in one request and save one batch", async () => {
   let leaseUpdate: Record<string, Date> | undefined;
   mock.method(Product, "findOne", () => ({ sort: () => ({ lean: async () => ({ priceUpdatedAt: null }) }) }));
-  mock.method(Product, "find", () => ({ select: () => ({ lean: async () => seedProducts.map(p => ({ ticker: p.ticker, priceUpdatedAt: null })) }) }));
+  mock.method(Product, "find", () => ({ select: () => ({ lean: async () => stockProducts.map(p => ({ ticker: p.ticker, priceUpdatedAt: null })) }) }));
   mock.method(PriceRefresh, "updateOne", async () => ({}));
   mock.method(PriceRefresh, "findOneAndUpdate", async (_query: unknown, update: { $set: Record<string, Date> }) => {
     leaseUpdate = update.$set;
@@ -24,8 +26,8 @@ test("concurrent readers refresh all 12 symbols in one request and save one batc
   });
   const writes = mock.method(Product, "bulkWrite", async () => ({}));
   const fetchMock = mock.method(globalThis, "fetch", async (url: URL | RequestInfo) => {
-    assert.deepEqual(new URL(String(url)).searchParams.get("symbols")?.split(","), seedProducts.map(p => p.ticker));
-    return Response.json({ success: true, data: { quotes: seedProducts.map(p => ({
+    assert.deepEqual(new URL(String(url)).searchParams.get("symbols")?.split(","), stockProducts.map(p => p.ticker));
+    return Response.json({ success: true, data: { quotes: stockProducts.map(p => ({
       symbol: p.ticker, last: 759, change_pct: 0, currency: "KWF",
     })) } });
   });

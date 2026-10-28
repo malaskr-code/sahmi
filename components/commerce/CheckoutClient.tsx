@@ -12,6 +12,8 @@ import { CardThemePreview } from "@/components/CardThemePreview";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { MarketStatus } from "@/components/MarketStatus";
 import { useCommerce, PageIntro, LoadingPanel, responseError } from "./shared";
+import { ExchangeRateAttribution } from "@/components/ExchangeRateAttribution";
+import { formatQuantity } from "@/lib/metal-units";
 
 type Mode = "wallet" | "card" | "demo";
 type QuoteItem = { productId: string; shares: number; unitPrice: number; subtotal: number };
@@ -104,7 +106,7 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
   const themeNames = t.product.themeNames;
 
   const getQuote = useCallback(async (signal?: AbortSignal): Promise<boolean> => {
-    if (!requestItems.length || requestItems.some(item => item.shares < 1)) return false;
+    if (!requestItems.length || requestItems.some(item => item.shares <= 0)) return false;
     setQuoting(true); setQuote(null); setQuoteError(""); setQuoteToken("");
     try {
       const response = await fetch("/api/checkout", {
@@ -170,6 +172,14 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
     }
   }
 
+  function changeLineQuantity(line: CheckoutLine, delta: number) {
+    const product = resolvedProducts[line.productId] ?? line.product;
+    const next = product?.type === "metal"
+      ? Math.max(0.001, Math.round((line.shares + delta) * 1000) / 1000)
+      : Math.max(1, line.shares + delta);
+    updateShares(line.productId, next);
+  }
+
   function updateTheme(value: CardThemeId) {
     setTheme(value);
     if (!buyNow && gift) setGift({ ...gift, theme: value });
@@ -220,7 +230,8 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
   return <main className="page-shell checkout-page min-h-[65vh]">
     <div className="mb-5"><Link href={backHref} className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--muted)] hover:text-[var(--gold-dark)]"><ArrowLeft size={15}/>{buyNow ? copy.checkout.backToProduct : copy.checkout.backToCart}</Link></div>
     <PageIntro eyebrow={copy.checkout.eyebrow} title={copy.checkout.title} subtitle={copy.checkout.subtitle}/>
-    <MarketStatus products={products}/>
+     <MarketStatus products={products}/>
+     {products.some(product => product.type === "metal") && <ExchangeRateAttribution />}
     <form onSubmit={submitGift} className="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_390px]">
       <div className="space-y-5">
         <section className="card p-5 sm:p-7">
@@ -230,6 +241,8 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
               const product = resolvedProducts[line.productId] ?? line.product;
               const name = product ? lang === "ar" ? product.nameAr : product.name : line.productId;
               const unitPrice = quote?.items.find(item => item.productId === line.productId)?.unitPrice ?? product?.price;
+              const quantityLabel = product?.type === "metal" ? lang === "ar" ? "غرامات" : "Grams" : t.product.shares;
+              const formattedQuantity = product ? formatQuantity(line.shares, product.type, lang) : String(line.shares);
               return <article key={line.productId} className="rounded-2xl border border-[var(--line)] p-4 sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex min-w-0 items-center gap-3">
@@ -237,13 +250,13 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
                     <div className="min-w-0"><p dir="ltr" className="text-[10px] font-bold uppercase tracking-[.16em] text-[var(--gold-dark)]">{product?.ticker ?? line.productId}</p><h3 className="font-display mt-1 truncate text-xl font-semibold">{name}</h3></div>
                   </div>
                   <div className="flex items-center gap-3 rounded-full border border-[var(--line)] px-2 py-1">
-                    <button type="button" aria-label={t.common.decrease} disabled={line.shares <= 1} onClick={() => updateShares(line.productId, Math.max(1, line.shares - 1))} className="rounded-full p-2 transition hover:bg-[var(--soft)] disabled:opacity-40"><Minus size={14}/></button>
-                    <span className="min-w-5 text-center text-sm font-semibold">{line.shares}</span>
-                    <button type="button" aria-label={t.common.increase} onClick={() => updateShares(line.productId, line.shares + 1)} className="rounded-full p-2 transition hover:bg-[var(--soft)]"><Plus size={14}/></button>
+                    <button type="button" aria-label={t.common.decrease} disabled={line.shares <= (product?.type === "metal" ? 0.001 : 1)} onClick={() => changeLineQuantity(line, product?.type === "metal" ? -0.001 : -1)} className="rounded-full p-2 transition hover:bg-[var(--soft)] disabled:opacity-40"><Minus size={14}/></button>
+                    <span className="min-w-5 text-center text-sm font-semibold">{formattedQuantity}</span>
+                    <button type="button" aria-label={t.common.increase} onClick={() => changeLineQuantity(line, product?.type === "metal" ? 0.001 : 1)} className="rounded-full p-2 transition hover:bg-[var(--soft)]"><Plus size={14}/></button>
                   </div>
                 </div>
                 <div className="mt-4 flex justify-between gap-4 border-t border-[var(--line)] pt-3 text-sm">
-                  <span className="text-[var(--muted)]">{line.shares} × {unitPrice === undefined ? "—" : currency(unitPrice)}</span>
+                  <span dir="ltr" className="text-[var(--muted)]">{formattedQuantity} × {unitPrice === undefined ? "—" : currency(unitPrice)}{product?.type === "metal" ? lang === "ar" ? " / غ" : " / g" : ""} <span className="sr-only">{quantityLabel}</span></span>
                   <strong>{quote?.items.find(item => item.productId === line.productId) ? currency(quote.items.find(item => item.productId === line.productId)!.subtotal) : "—"}</strong>
                 </div>
               </article>;
@@ -307,7 +320,8 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
             const product = resolvedProducts[line.productId] ?? line.product;
             const name = product ? lang === "ar" ? product.nameAr : product.name : line.productId;
             const item = quote?.items.find(quoteItem => quoteItem.productId === line.productId);
-            return <div key={line.productId} className="flex justify-between gap-4"><span className="min-w-0 text-[var(--muted)]">{name}<span dir="ltr" className="mt-1 block text-[10px]">{line.shares} × {item ? currency(item.unitPrice) : "—"}</span></span><span className="shrink-0">{quoting || !item ? "—" : currency(item.subtotal)}</span></div>;
+             const quantityText = product ? formatQuantity(line.shares, product.type, lang) : String(line.shares);
+             return <div key={line.productId} className="flex justify-between gap-4"><span className="min-w-0 text-[var(--muted)]">{name}<span dir="ltr" className="mt-1 block text-[10px]">{quantityText} × {item ? currency(item.unitPrice) : "—"}{product?.type === "metal" ? lang === "ar" ? " / غ" : " / g" : ""}</span></span><span className="shrink-0">{quoting || !item ? "—" : currency(item.subtotal)}</span></div>;
           })}
           <div className="flex justify-between gap-4"><span className="text-[var(--muted)]">{copy.checkout.subtotal}</span><span>{quoting ? "—" : quote ? currency(quote.subtotal) : "—"}</span></div>
           <div className="flex justify-between gap-4"><span className="text-[var(--muted)]">{copy.checkout.fee}</span><span>{quoting ? "—" : quote ? currency(quote.fee) : "—"}</span></div>

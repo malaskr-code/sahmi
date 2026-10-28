@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { ExchangeRateAttribution } from "@/components/ExchangeRateAttribution";
 import type { AdminCompany } from "@/lib/admin-types";
 import { SECTORS, sectorLabel } from "@/data/sectors";
 import {
@@ -131,7 +132,8 @@ export function AdminCompanies() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-[var(--ink)]">{lang === "ar" ? company.nameAr : company.name}</p>
                   <p className="mt-0.5 text-xs text-[var(--muted)]">{company.ticker} · {sectorLabel(company.sectorKey, lang)}</p>
-                  <p className="mt-1 text-sm text-[var(--ink)]">{formatAdminKwd(company.price, lang)}</p>
+                  <p className="mt-1 text-sm text-[var(--ink)]">{formatAdminKwd(company.price, lang)}{company.type === "metal" && <span dir="ltr" className="ms-1 text-xs text-[var(--muted)]">{lang === "ar" ? "/ غ" : "/ g"}</span>}</p>
+                  {company.type === "metal" && <ExchangeRateAttribution />}
                 </div>
                 <button type="button" onClick={() => setDraft(draftFrom(company))} className="min-h-10 rounded-xl border border-[var(--line)] px-3 text-sm font-medium text-[var(--ink)] hover:border-[var(--gold-dark)]">{copy.common.edit}</button>
                 <button

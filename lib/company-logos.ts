@@ -11,6 +11,8 @@ const logosByTicker: Record<string, { src: string; background: string }> = {
   OOREDOO: { src: "/company-logos/ooredoo.png", background: "#ffffff" },
   WARBABANK: { src: "/company-logos/warba-bank.png", background: "#ffffff" },
   CBK: { src: "/company-logos/commercial-bank.png", background: "#ffffff" },
+  XAU: { src: "/metals/gold.svg", background: "#f4ecda" },
+  XAG: { src: "/metals/silver.svg", background: "#e8edf1" },
 };
 
 export function companyLogoFor(ticker: string, fallback = "") {

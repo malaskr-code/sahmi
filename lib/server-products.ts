@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { connectDB } from "./db";
 import ProductModel from "../models/Product";
 import { refreshPrices } from "./price-refresh";
+import { refreshMetalPrices } from "./metal-prices";
 import type { Product } from "./product-types";
 import { companyLogoFor, companyLogoBgFor } from "./company-logos";
 import { inferSectorKey, type SectorKey } from "@/data/sectors";
@@ -10,6 +11,8 @@ function serialize(row: Record<string, unknown>): Product {
   const sectorKey = inferSectorKey(row.sectorKey, row.category, row.categoryAr) ?? "technology-services";
   return {
     id: String(row.slug), ticker: String(row.ticker), image: companyLogoFor(String(row.ticker), String(row.image ?? "")),
+    type: row.type === "metal" ? "metal" : "share",
+    purity: row.type === "metal" && Number.isFinite(Number(row.purity)) ? Number(row.purity) : null,
     logoBg: String(row.logoBg ?? companyLogoBgFor(String(row.ticker))),
     name: String(row.name), nameAr: String(row.nameAr),
     sectorKey: sectorKey as SectorKey,
@@ -22,6 +25,7 @@ function serialize(row: Record<string, unknown>): Product {
 export async function readProducts(category?: string) {
   await connectDB();
   await refreshPrices();
+  await refreshMetalPrices();
   const categoryFilter = category
     ? inferSectorKey(category) ? { sectorKey: inferSectorKey(category) } : { category }
     : {};
@@ -38,6 +42,7 @@ export async function readProduct(id: string) {
   // Avoid spending a quote request for a nonexistent/inactive product.
   if (!await ProductModel.exists(filter)) return null;
   await refreshPrices();
+  await refreshMetalPrices();
   const row = await ProductModel.findOne(filter).lean();
   return row ? serialize(row) : null;
 }

@@ -7,13 +7,13 @@ async function main() {
   try {
     await Product.init();
     const result = await Product.bulkWrite(seedProducts.map(product => {
-      const { logoBg, ...insertFields } = product;
+      const { logoBg, type = "share", purity = null, sectorKey: _sectorKey, ...insertFields } = product;
       return {
         updateOne: {
           filter: { ticker: product.ticker },
           // Re-running the seed refreshes only presentation metadata and the normalized sector key.
           update: {
-            $set: { logoBg, sectorKey: product.sectorKey },
+            $set: { logoBg, sectorKey: product.sectorKey, type, purity },
             $setOnInsert: { ...insertFields, image: "", active: true, priceUpdatedAt: null, createdAt: new Date() },
           },
           upsert: true,

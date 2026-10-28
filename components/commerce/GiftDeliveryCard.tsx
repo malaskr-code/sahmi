@@ -6,6 +6,7 @@ import { Check, Copy, Download, Share2 } from "lucide-react";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import type { GiftRecord } from "./shared";
 import { useCommerce } from "./shared";
+import { formatQuantity } from "@/lib/metal-units";
 
 type ShareableGift = Omit<GiftRecord, "code" | "direction"> & { code: string };
 
@@ -137,7 +138,10 @@ export function GiftDeliveryCard({ gift, actions = true }: { gift: ShareableGift
       context.globalAlpha = 1;
       context.font = "600 23px sans-serif";
       context.textAlign = rtl ? "left" : "right";
-      context.fillText(`${item.shares} ${copy.gifts.shares}`, rtl ? 105 : 1100, y + 38);
+      const quantity = item.company.type === "metal"
+        ? `${formatQuantity(item.shares, "metal", lang)} of ${lang === "ar" ? item.company.nameAr : item.company.name}`
+        : `${item.shares} ${copy.gifts.shares}`;
+      context.fillText(quantity, rtl ? 105 : 1100, y + 38, 400);
       if (index < items.length - 1) {
         context.strokeStyle = `${theme.ink}22`;
         context.beginPath();
@@ -191,7 +195,7 @@ export function GiftDeliveryCard({ gift, actions = true }: { gift: ShareableGift
                   <h2 className="font-display truncate text-lg font-semibold leading-tight sm:text-xl">{companyName}</h2>
                   <p dir="ltr" className="mt-1 text-[10px] tracking-widest opacity-70">{item.company.ticker}</p>
                 </div>
-                <p className="shrink-0 text-sm font-semibold">{item.shares} <span className="text-xs font-normal opacity-75">{copy.gifts.shares}</span></p>
+                 <p className="shrink-0 text-sm font-semibold">{item.company.type === "metal" ? `${formatQuantity(item.shares, "metal", lang)} ${lang === "ar" ? "من" : "of"} ${companyName}` : <>{item.shares} <span className="text-xs font-normal opacity-75">{copy.gifts.shares}</span></>}</p>
               </li>;
             })}
           </ul>
