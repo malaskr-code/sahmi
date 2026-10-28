@@ -235,7 +235,7 @@ export function Navbar() {
             <button onClick={toggleTheme} aria-label={dark ? t.nav.light : t.nav.dark} className="outline-button !p-2.5">{dark ? <Sun size={16} /> : <Moon size={16} />}</button>
             <Link href="/cart" aria-label={t.nav.cart} className="relative shrink-0 rounded-full border border-[var(--line)] p-2.5 transition hover:border-[var(--gold)]">
               <ShoppingBag size={17} />
-              {gift && <span className="absolute -right-1 -top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[var(--gold)] px-1 text-[10px] font-bold text-[#241f13]">1</span>}
+              {!!gift?.items.length && <span className="absolute -right-1 -top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[var(--gold)] px-1 text-[10px] font-bold text-[#241f13]">{gift.items.length}</span>}
             </Link>
             {(!loading || user) && <div className="min-w-0"><AccountMenu /></div>}
           </div>

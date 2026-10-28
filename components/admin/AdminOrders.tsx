@@ -96,7 +96,7 @@ export function AdminOrders() {
   }
 
   function Row({ order }: { order: AdminOrderRow }) {
-    const companyName = order.company ? (lang === "ar" ? order.company.nameAr : order.company.name) || order.company.ticker : copy.orders.topupOrder;
+    const companyNames = order.companies.map(company => (lang === "ar" ? company.nameAr : company.name) || company.ticker);
     const activate = () => { void openDetails(order.id); };
     return (
       <tr
@@ -109,8 +109,8 @@ export function AdminOrders() {
       >
         <td className="whitespace-nowrap px-3 py-3">{formatAdminDate(order.createdAt, lang)}</td>
         <td className="min-w-40 px-3 py-3"><span className="block font-medium">{order.buyer.name || "—"}</span><span className="text-xs text-[var(--muted)]">{order.buyer.email}</span></td>
-        <td className="whitespace-nowrap px-3 py-3">{companyName}</td>
-        <td className="px-3 py-3">{order.shares === null ? "—" : formatAdminNumber(order.shares, lang)}</td>
+        <td className="px-3 py-3">{companyNames.length ? <div className="space-y-1">{order.companies.map((company, index) => <p key={`${company.ticker}-${index}`}>{companyNames[index]} <span dir="ltr" className="text-xs text-[var(--muted)]">({company.ticker})</span></p>)}</div> : copy.orders.topupOrder}</td>
+        <td className="px-3 py-3">{order.companies.length ? <div className="space-y-1">{order.companies.map((company, index) => <p key={`${company.ticker}-${index}`}>{formatAdminNumber(company.shares, lang)}</p>)}</div> : "—"}</td>
         <td className="px-3 py-3">{order.recipientName || "—"}</td>
         <td className="whitespace-nowrap px-3 py-3">{themeLabel(order.theme, copy)}</td>
         <td className="whitespace-nowrap px-3 py-3">{formatAdminKwd(order.total, lang)}</td>
@@ -122,12 +122,11 @@ export function AdminOrders() {
     );
   }
 
-  const detailCompany = detail?.company ? (lang === "ar" ? detail.company.nameAr : detail.company.name) || detail.company.ticker : copy.orders.topupOrder;
+  const detailCompanies = detail?.companies.map(company => `${(lang === "ar" ? company.nameAr : company.name) || company.ticker} (${company.ticker}) · ${formatAdminNumber(company.shares, lang)} ${copy.orders.shares}`).join(", ");
   const detailFields = detail ? [
     [copy.orders.buyer, `${detail.buyer.name}${detail.buyer.email ? ` · ${detail.buyer.email}` : ""}`],
     [copy.orders.type, detail.type === "gift" ? copy.orders.giftOrder : copy.orders.topupOrder],
-    ...(detail.company ? [[copy.orders.company, detailCompany]] : []),
-    ...(detail.shares !== null ? [[copy.orders.shares, formatAdminNumber(detail.shares, lang)]] : []),
+    ...(detailCompanies ? [[copy.orders.company, detailCompanies]] : []),
     ...(detail.recipientName ? [[copy.orders.recipient, detail.recipientName]] : []),
     ...(detail.theme ? [[copy.orders.occasion, themeLabel(detail.theme, copy)]] : []),
     [copy.orders.total, formatAdminKwd(detail.total, lang)],
@@ -215,8 +214,7 @@ export function AdminOrders() {
                   <span className="shrink-0 text-sm font-semibold">{formatAdminKwd(order.total, lang)}</span>
                 </span>
                 <span className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
-                  <span>{order.company ? (lang === "ar" ? order.company.nameAr : order.company.name) || order.company.ticker : copy.orders.topupOrder}</span>
-                  {order.shares !== null && <span>· {formatAdminNumber(order.shares, lang)} {copy.orders.shares}</span>}
+                  <span>{order.companies.length ? order.companies.map(company => `${company.ticker} · ${formatAdminNumber(company.shares, lang)}`).join(" / ") : copy.orders.topupOrder}</span>
                   {order.recipientName && <span>· {order.recipientName}</span>}
                   {order.giftCodeLast4 && <span dir="ltr">· •••• {order.giftCodeLast4}</span>}
                 </span>
@@ -246,7 +244,7 @@ export function AdminOrders() {
               : detailError ? <div className="py-6"><AdminError error={detailError} onRetry={() => detailId && void openDetails(detailId)} /></div>
                 : detail && (
                   <div className="mt-5 space-y-5">
-                    <p className="text-sm text-[var(--muted)]">{formatAdminDate(detail.createdAt, lang)} · {detailCompany}</p>
+                    <p className="text-sm text-[var(--muted)]">{formatAdminDate(detail.createdAt, lang)} · {detailCompanies || copy.orders.topupOrder}</p>
                     <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {detailFields.map(([label, value]) => (
                         <div key={label} className="rounded-xl border border-[var(--line)] p-3">

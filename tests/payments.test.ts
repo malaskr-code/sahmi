@@ -51,27 +51,33 @@ test("gift price quotes are signed to the user and expire after ten minutes", ()
     const issuedAt = Date.now();
     const input = {
       userId: "user-123",
-      productId: "zain",
-      shares: 3,
+      items: [
+        { productId: "zain", shares: 3, unitPriceFils: 813 },
+        { productId: "nbk", shares: 2, unitPriceFils: 5120 },
+      ],
       payment: "both" as const,
-      unitPriceFils: 813,
       walletFils: 153,
-      cardChargeFils: 824,
+      cardChargeFils: 4996,
       issuedAt,
     };
     const token = signPriceQuote(input);
-    const expected = { userId: "user-123", productId: "zain", shares: 3, payment: "both" as const };
+    const expected = {
+      userId: "user-123",
+      items: [{ productId: "zain", shares: 3 }, { productId: "nbk", shares: 2 }],
+      payment: "both" as const,
+    };
     assert.deepEqual(verifyPriceQuote(token, expected, issuedAt + 599_999), {
-      unitPriceFils: 813,
+      items: input.items,
       walletFils: 153,
-      cardChargeFils: 824,
+      cardChargeFils: 4996,
       issuedAt,
       expiresAt: issuedAt + 600_000,
     });
     assert.equal(verifyPriceQuote(token, expected, issuedAt + 600_000), null);
     assert.equal(verifyPriceQuote(token, { ...expected, userId: "another-user" }, issuedAt + 1000), null);
     assert.equal(verifyPriceQuote(`${token.slice(0, -1)}A`, expected, issuedAt + 1000), null);
-    assert.equal(verifyPriceQuote(token, { ...expected, shares: 4 }, issuedAt + 1000), null);
+    assert.equal(verifyPriceQuote(token, { ...expected, items: [{ ...expected.items[0], shares: 4 }, expected.items[1]] }, issuedAt + 1000), null);
+    assert.equal(verifyPriceQuote(token, { ...expected, items: [...expected.items].reverse() }, issuedAt + 1000), null);
   } finally {
     delete process.env.JWT_SECRET;
   }
@@ -83,18 +89,16 @@ test("demo gift quotes are signed, expire normally, and reserve neither wallet n
     const issuedAt = Date.now();
     const input = {
       userId: "user-123",
-      productId: "zain",
-      shares: 2,
+      items: [{ productId: "zain", shares: 2, unitPriceFils: 813 }],
       payment: "demo" as const,
-      unitPriceFils: 813,
       walletFils: 0,
       cardChargeFils: 0,
       issuedAt,
     };
     const token = signPriceQuote(input);
-    const expected = { userId: "user-123", productId: "zain", shares: 2, payment: "demo" as const };
+    const expected = { userId: "user-123", items: [{ productId: "zain", shares: 2 }], payment: "demo" as const };
     assert.deepEqual(verifyPriceQuote(token, expected, issuedAt + 599_999), {
-      unitPriceFils: 813,
+      items: input.items,
       walletFils: 0,
       cardChargeFils: 0,
       issuedAt,

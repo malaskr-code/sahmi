@@ -171,7 +171,7 @@ export async function redeemGift(input: unknown, userId: string) {
         updateOne: {
           filter: { user: userObjectId, product: new Types.ObjectId(productId) },
           update: {
-            $setOnInsert: { user: userObjectId, product: new Types.ObjectId(productId), shares: 0, costBasis: 0 },
+            $setOnInsert: { user: userObjectId, product: new Types.ObjectId(productId) },
             $inc: { shares: holding.shares, costBasis: holding.costBasis },
             $set: { updatedAt: redeemedAt },
           },

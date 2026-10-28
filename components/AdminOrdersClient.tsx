@@ -8,6 +8,7 @@ export type AdminOrder = {
   id: string;
   type: "gift" | "topup";
   company: { ticker: string; name: string; nameAr: string; image: string; logoBg: string } | null;
+  companies?: Array<{ ticker: string; name: string; nameAr: string; image: string; logoBg: string; shares: number }>;
   paymentMethod: "wallet" | "card" | "both" | "demo";
   status: "pending" | "paid" | "cancelled";
   total: number;
@@ -27,7 +28,10 @@ export function AdminOrdersClient({ orders }: { orders: AdminOrder[] }) {
   const { lang } = useStore();
   const account = accountCopy[lang] as typeof accountCopy[typeof lang] & { adminOrders: AdminOrdersLabels };
   const labels = account.adminOrders;
-  const companyName = (order: AdminOrder) => order.company ? lang === "ar" ? order.company.nameAr : order.company.name : "";
+  const companyLines = (order: AdminOrder) => order.companies?.length
+    ? order.companies
+    : order.company ? [{ ...order.company, shares: 0 }] : [];
+  const companyName = (company: NonNullable<AdminOrder["company"]>) => lang === "ar" ? company.nameAr : company.name;
 
   function money(value: number) {
     return new Intl.NumberFormat(lang === "ar" ? "ar-KW" : "en-KW", {
@@ -90,10 +94,10 @@ export function AdminOrdersClient({ orders }: { orders: AdminOrder[] }) {
                     <td dir="ltr" className="px-5 py-4 font-mono text-xs">{order.id}</td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        {order.company && <CompanyLogo src={order.company.image} name={companyName(order)} logoBg={order.company.logoBg} className="h-10 w-10 rounded-lg"/>}
+                        {companyLines(order)[0] && <CompanyLogo src={companyLines(order)[0].image} name={companyName(companyLines(order)[0])} logoBg={companyLines(order)[0].logoBg} className="h-10 w-10 rounded-lg"/>}
                         <div>
                           <p>{orderTypeLabel(order.type)}</p>
-                          {order.company && <p className="mt-0.5 text-xs text-[var(--muted)]">{companyName(order)}</p>}
+                          {companyLines(order).map(company => <p key={company.ticker} className="mt-0.5 text-xs text-[var(--muted)]">{companyName(company)} · {company.ticker}{company.shares ? ` · ${company.shares}` : ""}</p>)}
                         </div>
                       </div>
                     </td>
@@ -120,10 +124,10 @@ export function AdminOrdersClient({ orders }: { orders: AdminOrder[] }) {
                   <div>
                     <p className="text-[var(--muted)]">{labels.columns.type}</p>
                     <div className="mt-1 flex items-center gap-2">
-                      {order.company && <CompanyLogo src={order.company.image} name={companyName(order)} logoBg={order.company.logoBg} className="h-9 w-9 rounded-lg"/>}
+                      {companyLines(order)[0] && <CompanyLogo src={companyLines(order)[0].image} name={companyName(companyLines(order)[0])} logoBg={companyLines(order)[0].logoBg} className="h-9 w-9 rounded-lg"/>}
                       <div className="min-w-0">
                         <p className="font-medium">{orderTypeLabel(order.type)}</p>
-                        {order.company && <p className="truncate text-[10px] text-[var(--muted)]">{companyName(order)}</p>}
+                        {companyLines(order).map(company => <p key={company.ticker} className="truncate text-[10px] text-[var(--muted)]">{companyName(company)} · {company.ticker}{company.shares ? ` · ${company.shares}` : ""}</p>)}
                       </div>
                     </div>
                   </div>

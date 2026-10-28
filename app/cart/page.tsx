@@ -15,7 +15,8 @@ export default function CartPage() {
   const { products, loading, error, retry } = useProducts();
   const currency = (amount: number) => formatKwd(amount, lang);
 
-  if (!ready || !gift) {
+  if (!ready) return <div className="page-shell py-12"><div className="card min-h-64 animate-pulse bg-[var(--soft)]" role="status" aria-label={t.cart.title}/></div>;
+  if (!gift) {
     return <div className="page-shell min-h-[55vh] pt-12 md:pt-16">
       <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--gold-dark)]">{t.cart.title}</p>
       <h1 className="font-display mt-3 text-4xl font-semibold md:text-5xl">{gift ? t.cart.title : t.cart.emptyTitle}</h1>

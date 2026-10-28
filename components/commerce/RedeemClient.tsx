@@ -63,7 +63,6 @@ export default function RedeemClient({ code }: { code: string }) {
   }
 
   const design = palette[gift?.theme ?? "general"] ?? palette.general;
-  const companyName = gift?.items[0] ? lang === "ar" ? gift.items[0].company.nameAr : gift.items[0].company.name : "";
   return <main className="page-shell flex min-h-[70vh] items-center justify-center py-10 md:py-16">
     {loading || authLoading ? <section className="card w-full max-w-2xl p-7 sm:p-10" role="status" aria-live="polite"><div className="h-3 w-32 animate-pulse rounded bg-[var(--soft)]"/><div className="mt-6 h-8 max-w-md animate-pulse rounded bg-[var(--soft)]"/><div className="mt-5 h-40 animate-pulse rounded-2xl bg-[var(--soft)]"/></section>
       : unavailable || !gift ? <section className="card w-full max-w-xl p-7 text-center sm:p-12"><span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[var(--red)]/10 text-[var(--red)]"><Gift size={24}/></span><p className="mt-5 text-[10px] font-bold uppercase tracking-[.2em] text-[var(--gold-dark)]">{copy.redeem.eyebrow}</p><h1 className="font-display mt-3 text-3xl font-semibold">{copy.redeem.invalidTitle}</h1><ErrorPanel text={error || copy.redeem.unavailable}/><Link href="/" className="gold-button mt-7">{copy.redeem.back}<ArrowRight size={15}/></Link></section>

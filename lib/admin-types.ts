@@ -3,6 +3,14 @@ import type { SectorKey } from "@/data/sectors";
 export type AdminTab = "overview" | "orders" | "companies" | "prices" | "users";
 export type AdminOrderStatus = "pending" | "paid" | "cancelled";
 export type AdminPaymentMethod = "wallet" | "card" | "both" | "demo";
+export type AdminOrderCompany = {
+  ticker: string;
+  name: string;
+  nameAr: string;
+  image: string;
+  logoBg: string;
+  shares: number;
+};
 
 export type AdminCompany = {
   id: string;
@@ -27,6 +35,7 @@ export type AdminOrderRow = {
   type: "gift" | "topup";
   createdAt: string;
   buyer: { name: string; email: string };
+  companies: AdminOrderCompany[];
   company: { ticker: string; name: string; nameAr: string; image: string; logoBg: string } | null;
   shares: number | null;
   recipientName: string;
@@ -69,7 +78,7 @@ export type AdminOverviewData = {
   walletTopupsKwd: number;
   demoOrders: number;
   giftsPerDay: Array<{ date: string; count: number }>;
-  topCompanies: Array<{ ticker: string; name: string; nameAr: string; gifts: number }>;
+  topCompanies: Array<{ ticker: string; name: string; nameAr: string; gifts: number; shares: number }>;
   occasions: Array<{ theme: string; count: number }>;
 };
 

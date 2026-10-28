@@ -76,13 +76,24 @@ export async function getAdminOverview() {
   const now = new Date();
   const today = kuwaitDateKey(now);
   const firstDay = shiftDateKey(today, -29);
+  const giftLines = {
+    $cond: [
+      { $gt: [{ $size: { $ifNull: ["$items", []] } }, 0] },
+      "$items",
+      [{ product: "$product", shares: "$shares" }],
+    ],
+  };
   const [totalUsers, giftsSent, giftsRedeemed, giftsWaiting, shareTotals, finances, demoOrders, dailyRows, companyRows, themeRows] =
     await Promise.all([
       User.countDocuments({}),
       Gift.countDocuments({}),
       Gift.countDocuments({ status: "redeemed" }),
       Gift.countDocuments({ status: "active" }),
-      Gift.aggregate([{ $group: { _id: null, shares: { $sum: "$shares" } } }]),
+      Gift.aggregate([
+        { $project: { lines: giftLines } },
+        { $unwind: "$lines" },
+        { $group: { _id: null, shares: { $sum: "$lines.shares" } } },
+      ]),
       Order.aggregate([
         { $match: { status: "paid", paymentMethod: { $ne: "demo" } } },
         {
@@ -105,12 +116,14 @@ export async function getAdminOverview() {
         { $sort: { _id: 1 } },
       ]),
       Gift.aggregate([
-        { $group: { _id: "$product", gifts: { $sum: 1 } } },
+        { $project: { lines: giftLines } },
+        { $unwind: "$lines" },
+        { $group: { _id: "$lines.product", gifts: { $sum: 1 }, shares: { $sum: "$lines.shares" } } },
         { $sort: { gifts: -1, _id: 1 } },
         { $limit: 5 },
         { $lookup: { from: Product.collection.name, localField: "_id", foreignField: "_id", as: "company" } },
         { $unwind: "$company" },
-        { $project: { _id: 0, ticker: "$company.ticker", name: "$company.name", nameAr: "$company.nameAr", gifts: 1 } },
+        { $project: { _id: 0, ticker: "$company.ticker", name: "$company.name", nameAr: "$company.nameAr", gifts: 1, shares: 1 } },
       ]),
       Gift.aggregate([{ $group: { _id: "$theme", count: { $sum: 1 } } }]),
     ]);
@@ -137,11 +150,12 @@ export async function getAdminOverview() {
     walletTopupsKwd: Number(financialTotals.topups ?? 0),
     demoOrders,
     giftsPerDay,
-    topCompanies: (companyRows as Array<{ ticker: string; name: string; nameAr: string; gifts: number }>).map(row => ({
+    topCompanies: (companyRows as Array<{ ticker: string; name: string; nameAr: string; gifts: number; shares: number }>).map(row => ({
       ticker: String(row.ticker),
       name: String(row.name),
       nameAr: String(row.nameAr),
       gifts: Number(row.gifts),
+      shares: Number(row.shares),
     })),
     occasions: THEMES.map(theme => ({ theme, count: countsByTheme.get(theme) ?? 0 })),
   };
@@ -216,7 +230,9 @@ type RawProduct = {
 
 type RawGift = {
   order: Types.ObjectId;
-  shares: number;
+  items?: Array<{ product?: RawProduct; shares?: number }>;
+  product?: RawProduct;
+  shares?: number;
   theme: string;
   recipientName: string;
   status: "active" | "redeemed";
@@ -319,20 +335,33 @@ export async function getAdminOrders(search: URLSearchParams) {
     .lean() as unknown as RawOrder[];
   const ids = orders.map(order => order._id);
   const gifts = await Gift.find({ order: { $in: ids } })
-    .select("order shares theme recipientName status redeemedAt +codeLast4 +codeEncrypted")
+    .select("order items product shares theme recipientName status redeemedAt +codeLast4 +codeEncrypted")
+    .populate({ path: "items.product", select: "ticker name nameAr image logoBg" })
+    .populate({ path: "product", select: "ticker name nameAr image logoBg" })
     .lean() as unknown as RawGift[];
   const giftsByOrder = new Map(gifts.map(gift => [String(gift.order), gift]));
   const rows: AdminOrderRow[] = orders.map(order => {
     const gift = giftsByOrder.get(String(order._id));
     const item = order.items?.[0];
-    const product = item?.product;
+    const sourceItems = order.items?.length
+      ? order.items
+      : gift?.items?.length
+        ? gift.items
+        : gift?.product
+          ? [{ product: gift.product, shares: gift.shares }]
+          : [];
+    const companies = sourceItems.flatMap(line => {
+      const company = companyFor(line.product);
+      return company ? [{ ...company, shares: Number(line.shares ?? 0) }] : [];
+    });
     return {
       id: String(order._id),
+      companies: order.type === "gift" ? companies : [],
       type: order.type,
       createdAt: new Date(order.createdAt).toISOString(),
       buyer: { name: String(order.user?.name ?? ""), email: String(order.user?.email ?? "") },
-      company: order.type === "gift" ? companyFor(product) : null,
-      shares: order.type === "gift" ? Number(gift?.shares ?? item?.shares ?? 0) : null,
+      company: order.type === "gift" ? companies[0] ?? null : null,
+      shares: order.type === "gift" ? companies[0]?.shares ?? Number(gift?.shares ?? item?.shares ?? 0) : null,
       recipientName: String(gift?.recipientName ?? order.recipientName ?? ""),
       theme: gift?.theme ?? item?.theme ?? null,
       total: Number(order.total),
@@ -357,19 +386,33 @@ export async function getAdminOrderDetail(id: string): Promise<AdminOrderDetail 
     .lean() as unknown as RawOrder | null;
   if (!order) return null;
   const gift = await Gift.findOne({ order: order._id })
-    .select("order shares theme recipientName message priceAtPurchase status redeemedAt +codeLast4 +codeEncrypted")
+    .select("order items product shares theme recipientName message priceAtPurchase status redeemedAt +codeLast4 +codeEncrypted")
+    .populate({ path: "items.product", select: "ticker name nameAr image logoBg" })
+    .populate({ path: "product", select: "ticker name nameAr image logoBg" })
     .lean() as unknown as (RawGift & { message?: string; priceAtPurchase?: number }) | null;
   const item = order.items?.[0];
+  const sourceItems = order.items?.length
+    ? order.items
+    : gift?.items?.length
+      ? gift.items
+      : gift?.product
+        ? [{ product: gift.product, shares: gift.shares }]
+        : [];
+  const companies = sourceItems.flatMap(line => {
+    const company = companyFor(line.product);
+    return company ? [{ ...company, shares: Number(line.shares ?? 0) }] : [];
+  });
   const code = gift?.codeEncrypted ? (() => {
     try { return decryptGiftCode(gift.codeEncrypted); } catch { return null; }
   })() : null;
   return {
     id: String(order._id),
+    companies: order.type === "gift" ? companies : [],
     type: order.type,
     createdAt: new Date(order.createdAt).toISOString(),
     buyer: { name: String(order.user?.name ?? ""), email: String(order.user?.email ?? "") },
-    company: order.type === "gift" ? companyFor(item?.product) : null,
-    shares: order.type === "gift" ? Number(gift?.shares ?? item?.shares ?? 0) : null,
+    company: order.type === "gift" ? companies[0] ?? null : null,
+    shares: order.type === "gift" ? companies[0]?.shares ?? Number(gift?.shares ?? item?.shares ?? 0) : null,
     recipientName: String(gift?.recipientName ?? order.recipientName ?? ""),
     theme: gift?.theme ?? item?.theme ?? null,
     total: Number(order.total),
