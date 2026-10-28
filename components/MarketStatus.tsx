@@ -5,7 +5,7 @@ import type { Product } from "@/lib/product-types";
 import { isMarketOpen } from "@/lib/market-hours";
 import { useStore } from "@/lib/store";
 
-export function MarketStatus({ products }: { products: Product[] }) {
+export function MarketStatus({ products, stacked = false }: { products: Product[]; stacked?: boolean }) {
   const { lang } = useStore();
   const metals = products.filter(product => product.type === "metal");
   const shares = products.filter(product => product.type !== "metal");
@@ -46,12 +46,12 @@ export function MarketStatus({ products }: { products: Product[] }) {
       : "Market closed · showing closing prices";
 
   if (!metalStatus && !status) return null;
-  return <div className="mt-3 space-y-1">
-    {status && <p className="inline-flex items-center gap-2 text-xs text-[var(--muted)]" aria-live="polite">
+  return <div className={`mt-3 ${stacked ? "flex flex-col gap-2" : "space-y-1"}`}>
+    {status && <p className="inline-flex w-fit items-center gap-2 text-xs text-[var(--muted)]" aria-live="polite">
       <span className={`h-2 w-2 shrink-0 rounded-full ${open ? "bg-emerald-500" : "bg-slate-400"}`} aria-hidden="true" />
       {status}
     </p>}
-    {metalStatus && <p className="inline-flex items-center gap-2 text-xs text-[var(--muted)]" aria-live="polite">
+    {metalStatus && <p className="inline-flex w-fit items-center gap-2 text-xs text-[var(--muted)]" aria-live="polite">
       <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
       {metalStatus}
     </p>}
