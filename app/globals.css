@@ -14,6 +14,8 @@ a{color:inherit;text-decoration:none}
 .font-display{font-family:var(--font-display)}
 body[dir="rtl"] .font-display{font-family:var(--font-arabic)}
 .page-shell{max-width:1200px;margin:auto;padding:0 28px}
+.checkout-page{padding-top:40px;padding-bottom:48px}
+footer .page-shell{padding-top:64px;padding-bottom:48px}
 .card{background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
 .gold-button{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:var(--gold);color:#211d13;border:0;border-radius:999px;padding:14px 23px;font-weight:700;transition:transform .2s,background .2s;cursor:pointer}
 .gold-button:hover{transform:translateY(-2px);background:#d7b447}
@@ -24,7 +26,7 @@ body[dir="rtl"] .font-display{font-family:var(--font-arabic)}
 @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 .arabic{font-family:var(--font-arabic)}
 @media(max-width:700px){.page-shell{padding:0 18px}}
-@media(max-width:767px){footer .page-shell{padding-top:48px;padding-bottom:40px}}
+@media(max-width:767px){.checkout-page{padding-top:40px;padding-bottom:48px}footer .page-shell{padding-top:48px;padding-bottom:40px}}
 .home-hero{padding-top:32px}
 .home-section{padding-block:64px}
 @media(min-width:768px){.home-hero{padding-top:48px}.home-section{padding-block:96px}}

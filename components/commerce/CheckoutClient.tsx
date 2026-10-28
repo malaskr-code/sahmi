@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, BadgeCheck, Clock3, CreditCard, Minus, Plus, WalletCards } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeCheck, Clock3, CreditCard, Info, Minus, Plus, WalletCards } from "lucide-react";
 import { CARD_THEME_IDS, type CardThemeId } from "@/data/cardThemes";
 import type { Product } from "@/lib/product-types";
 import { useStore } from "@/lib/store";
@@ -217,7 +217,7 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
   if (productLoading && !products.length) return <main className="page-shell py-12"><LoadingPanel text={copy.checkout.refreshing}/></main>;
 
   const backHref = buyNow ? `/products/${encodeURIComponent(buyNow.productId)}` : "/cart";
-  return <main className="page-shell min-h-[65vh] pt-10 pb-16 md:pt-16 md:pb-20">
+  return <main className="page-shell checkout-page min-h-[65vh]">
     <div className="mb-5"><Link href={backHref} className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--muted)] hover:text-[var(--gold-dark)]"><ArrowLeft size={15}/>{buyNow ? copy.checkout.backToProduct : copy.checkout.backToCart}</Link></div>
     <PageIntro eyebrow={copy.checkout.eyebrow} title={copy.checkout.title} subtitle={copy.checkout.subtitle}/>
     <MarketStatus products={products}/>
@@ -277,8 +277,8 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
                 : mode === "card"
                   ? copy.checkout.cardMethods
                   : copy.checkout.generateCodeNote;
-              return <div key={mode} className="min-w-0">
-                <label className={`flex min-h-full items-start gap-3 rounded-xl border p-4 transition ${walletDisabled ? "cursor-not-allowed border-[var(--line)] opacity-55" : `cursor-pointer ${payment === mode ? "border-[var(--gold-dark)] bg-[var(--gold)]/10" : "border-[var(--line)] hover:bg-[var(--soft)]"}`}`}>
+              return <div key={mode} className={`min-w-0 rounded-xl border transition ${walletDisabled ? "border-[var(--line)] bg-[var(--paper)]" : payment === mode ? "border-[var(--gold-dark)] bg-[var(--gold)]/10" : "border-[var(--line)] hover:bg-[var(--soft)]"}`}>
+                <label className={`flex items-start gap-3 p-4 ${walletDisabled ? "cursor-not-allowed opacity-55" : "cursor-pointer"}`}>
                   <input type="radio" name="payment" value={mode} checked={payment === mode} disabled={walletDisabled} onChange={() => {
                     paymentTouched.current = true;
                     setQuote(null); setQuoteToken(""); setPayment(mode);
@@ -288,9 +288,12 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
                     <span dir={lang === "ar" ? "rtl" : "ltr"} className="mt-1 block text-[11px] leading-5 text-[var(--muted)]">{subtitle}</span>
                   </span>
                 </label>
-                {mode === "wallet" && shortfall > 0 && <div className="mt-2 space-y-1 text-xs leading-5">
-                  <p className="text-[var(--muted)]">{copy.checkout.insufficientBalance.replace("{amount}", currency(shortfall))}</p>
-                  <Link href="/wallet" className="font-semibold text-[var(--gold-dark)] underline underline-offset-4">{copy.checkout.addMoney}</Link>
+                {mode === "wallet" && shortfall > 0 && <div className="px-4 pb-4">
+                  <div className="flex items-start gap-2 rounded-xl bg-[var(--gold)]/15 p-[10px_12px] text-xs leading-5 text-[var(--gold-dark)]">
+                    <Info size={16} aria-hidden="true" className="mt-0.5 shrink-0"/>
+                    <span><strong className="block font-semibold">{copy.checkout.insufficientBalanceTitle}</strong><span dir={lang === "ar" ? "rtl" : "ltr"} className="block">{copy.checkout.insufficientBalanceAmount.replace("{amount}", currency(shortfall))}</span></span>
+                  </div>
+                  <Link href="/wallet" className="outline-button mt-2 !border-[var(--gold-dark)] !px-3 !py-2 !text-xs !text-[var(--gold-dark)]">{copy.checkout.addMoney}</Link>
                 </div>}
               </div>;
             })}

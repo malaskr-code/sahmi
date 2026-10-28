@@ -8,13 +8,13 @@ export function Footer() {
 
   return (
     <footer className="mt-0 border-t border-[var(--line)] bg-[var(--soft)]/60">
-      <div className="page-shell py-12 md:pt-16 md:pb-12">
+      <div className="page-shell">
         <div className="grid gap-10 md:grid-cols-[1.3fr_.7fr] md:gap-16">
           <div>
             <div className="font-display text-[1.75rem] font-bold text-[var(--gold-dark)]">
               Sahmi <span className="arabic text-xl">سهمي</span>
             </div>
-            <p className="mt-5 max-w-md text-sm leading-6 text-[var(--muted)]">
+            <p className="mt-3 max-w-md text-sm leading-6 text-[var(--muted)]">
               {t.footer.about}
             </p>
           </div>
@@ -44,7 +44,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 border-t border-[var(--line)] pt-5 text-xs text-[var(--muted)] md:mt-12">
+        <div className="mt-8 border-t border-[var(--line)] pt-5 text-xs text-[var(--muted)]">
           {t.footer.copyright}
         </div>
       </div>
