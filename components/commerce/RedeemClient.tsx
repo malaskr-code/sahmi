@@ -8,8 +8,11 @@ import { useCommerce, ErrorPanel, responseError } from "./shared";
 import { CompanyLogo } from "@/components/CompanyLogo";
 
 type Preview = {
-  company: { ticker: string; name: string; nameAr: string; image: string; logoBg: string };
-  shares: number; recipientName: string; message: string; theme: string; status: string;
+  items: Array<{
+    company: { ticker: string; name: string; nameAr: string; image: string; logoBg: string };
+    shares: number;
+  }>;
+  recipientName: string; message: string; theme: string; status: string;
 };
 const palette: Record<string, { bg: string; ink: string; accent: string }> = {
   eid: { bg: "#e9f1e8", ink: "#234631", accent: "#bf9b43" },
@@ -60,7 +63,7 @@ export default function RedeemClient({ code }: { code: string }) {
   }
 
   const design = palette[gift?.theme ?? "general"] ?? palette.general;
-  const companyName = gift ? lang === "ar" ? gift.company.nameAr : gift.company.name : "";
+  const companyName = gift?.items[0] ? lang === "ar" ? gift.items[0].company.nameAr : gift.items[0].company.name : "";
   return <main className="page-shell flex min-h-[70vh] items-center justify-center py-10 md:py-16">
     {loading || authLoading ? <section className="card w-full max-w-2xl p-7 sm:p-10" role="status" aria-live="polite"><div className="h-3 w-32 animate-pulse rounded bg-[var(--soft)]"/><div className="mt-6 h-8 max-w-md animate-pulse rounded bg-[var(--soft)]"/><div className="mt-5 h-40 animate-pulse rounded-2xl bg-[var(--soft)]"/></section>
       : unavailable || !gift ? <section className="card w-full max-w-xl p-7 text-center sm:p-12"><span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[var(--red)]/10 text-[var(--red)]"><Gift size={24}/></span><p className="mt-5 text-[10px] font-bold uppercase tracking-[.2em] text-[var(--gold-dark)]">{copy.redeem.eyebrow}</p><h1 className="font-display mt-3 text-3xl font-semibold">{copy.redeem.invalidTitle}</h1><ErrorPanel text={error || copy.redeem.unavailable}/><Link href="/" className="gold-button mt-7">{copy.redeem.back}<ArrowRight size={15}/></Link></section>
@@ -71,17 +74,21 @@ export default function RedeemClient({ code }: { code: string }) {
           <div className="relative m-4 overflow-hidden rounded-[20px] p-6 sm:m-6 sm:p-10" style={{ background: design.bg, color: design.ink }}>
             <span aria-hidden="true" className="absolute -end-10 -top-16 h-64 w-64 rounded-full border opacity-40" style={{ borderColor: design.accent }}/>
             <div className="relative flex flex-wrap items-center justify-between gap-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <CompanyLogo src={gift.company.image} name={companyName} logoBg={gift.company.logoBg} className="h-14 w-14 rounded-xl"/>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-[.2em] opacity-60">{copy.brandMark}</p>
-                  <h2 className="font-display mt-2 max-w-xl text-3xl font-semibold md:text-4xl">{companyName}</h2>
-                  <p className="mt-2 text-sm font-semibold tracking-widest opacity-70">{gift.company.ticker}</p>
-                </div>
+              <div className="w-full">
+                <p className="text-[10px] font-bold uppercase tracking-[.2em] opacity-60">{copy.brandMark}</p>
+                <ul className="mt-4 divide-y divide-current/15">
+                  {gift.items.map(item => {
+                    const name = lang === "ar" ? item.company.nameAr : item.company.name;
+                    return <li key={item.company.ticker} className="flex flex-wrap items-center gap-3 py-3 first:pt-1">
+                      <CompanyLogo src={item.company.image} name={name} logoBg={item.company.logoBg} className="h-12 w-12 shrink-0 rounded-xl"/>
+                      <div className="min-w-0 flex-1"><h2 className="font-display truncate text-xl font-semibold md:text-2xl">{name}</h2><p dir="ltr" className="mt-1 text-xs font-semibold tracking-widest opacity-70">{item.company.ticker}</p></div>
+                      <div className="rounded-full border border-current/20 px-4 py-2 text-xs font-semibold">{item.shares} {copy.redeem.shares}</div>
+                    </li>;
+                  })}
+                </ul>
               </div>
-              <div className="rounded-full border border-current/20 px-4 py-2 text-xs font-semibold">{gift.shares} {copy.redeem.shares}</div>
             </div>
-            <div className="relative mt-8 grid gap-5 border-t border-current/15 pt-5 sm:grid-cols-[1fr_auto] sm:items-end"><div><p className="text-[10px] font-bold uppercase tracking-[.13em] opacity-60">{copy.redeem.recipient}</p><p className="mt-1 text-lg font-semibold">{gift.recipientName}</p>{gift.message && <><p className="mt-5 text-[10px] font-bold uppercase tracking-[.13em] opacity-60">{copy.redeem.message}</p><p className="mt-2 max-w-xl text-sm leading-6">{gift.message}</p></>}</div><div className="hidden rounded-xl border border-current/15 p-3 sm:block"><LockKeyhole size={19} style={{ color: design.accent }}/></div></div>
+            <div className="relative mt-6 grid gap-5 border-t border-current/15 pt-5 sm:grid-cols-[1fr_auto] sm:items-end"><div><p className="text-[10px] font-bold uppercase tracking-[.13em] opacity-60">{copy.redeem.recipient}</p><p className="mt-1 text-lg font-semibold">{gift.recipientName}</p>{gift.message && <><p className="mt-5 text-[10px] font-bold uppercase tracking-[.13em] opacity-60">{copy.redeem.message}</p><p className="mt-2 max-w-xl text-sm leading-6">{gift.message}</p></>}</div><div className="hidden rounded-xl border border-current/15 p-3 sm:block"><LockKeyhole size={19} style={{ color: design.accent }}/></div></div>
           </div>
           <div className="p-6 pt-2 text-center sm:p-8 sm:pt-3">
             {gift.status === "redeemed" ? <p className="rounded-xl bg-[var(--soft)] px-4 py-3 text-sm text-[var(--muted)]">{copy.redeem.alreadyRedeemed}</p> : <>
