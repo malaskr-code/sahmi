@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useCommerce, PageIntro, LoadingPanel, ErrorPanel, type GiftRecord } from "./shared";
 import { useStore } from "@/lib/store";
 import { GiftDeliveryCard } from "./GiftDeliveryCard";
-import { ExchangeRateAttribution } from "@/components/ExchangeRateAttribution";
 import { formatQuantity } from "@/lib/metal-units";
 
 export default function GiftsClient() {
@@ -50,7 +49,6 @@ export default function GiftsClient() {
                 <div><p className="text-[10px] uppercase tracking-[.12em] text-[var(--muted)]">{copy.gifts.date}</p><time className="mt-1 block font-semibold" dateTime={gift.createdAt}>{new Date(gift.createdAt).toLocaleDateString(lang === "ar" ? "ar-KW" : "en-KW", { day: "numeric", month: "short", year: "numeric" })}</time></div>
               </div>
               {gift.message && <blockquote className="my-5 border-s-2 border-[var(--gold)] ps-4 text-sm leading-6 text-[var(--muted)]">“{gift.message}”</blockquote>}
-               {gift.items.some(item => item.company.type === "metal") && <ExchangeRateAttribution />}
             </div>
           </article>;
         })}

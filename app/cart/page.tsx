@@ -9,7 +9,6 @@ import { useProducts } from "@/lib/use-products";
 import { ProductFeedback } from "@/components/ProductFeedback";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { sectorLabel } from "@/data/sectors";
-import { ExchangeRateAttribution } from "@/components/ExchangeRateAttribution";
 import { formatQuantity } from "@/lib/metal-units";
 
 export default function CartPage() {
@@ -66,7 +65,7 @@ export default function CartPage() {
               <button type="button" onClick={() => removeCompany(product.id)} aria-label={`${t.cart.removeCompany}: ${name}`} className="outline-button !px-3 !py-2 text-xs text-[var(--red)]"><Trash2 size={14}/>{t.cart.removeCompany}</button>
             </div>
             <div className="grid gap-5 pt-5 sm:grid-cols-3">
-              <div><p className="text-xs text-[var(--muted)]">{product.type === "metal" ? lang === "ar" ? "السعر لكل غرام" : "Price per gram" : t.cart.price}</p><p className="mt-1 font-semibold">{currency(product.price)}{product.type === "metal" && <span dir="ltr" className="ms-1 text-xs font-normal text-[var(--muted)]">{lang === "ar" ? "/ غ" : "/ g"}</span>}</p>{product.type === "metal" && <ExchangeRateAttribution />}</div>
+              <div><p className="text-xs text-[var(--muted)]">{product.type === "metal" ? lang === "ar" ? "السعر لكل غرام" : "Price per gram" : t.cart.price}</p><p className="mt-1 font-semibold">{currency(product.price)}{product.type === "metal" && <span dir="ltr" className="ms-1 text-xs font-normal text-[var(--muted)]">{lang === "ar" ? "/ غ" : "/ g"}</span>}</p></div>
               <div>
                 <p className="text-xs text-[var(--muted)]">{product.type === "metal" ? lang === "ar" ? "غرامات" : "Grams" : t.cart.shares}</p>
                 <div className="mt-1 flex w-fit items-center gap-4 rounded-full border border-[var(--line)] px-2 py-1">
@@ -94,7 +93,6 @@ export default function CartPage() {
           <div className="flex justify-between"><span className="text-[var(--muted)]">{t.cart.fee}</span><span>{currency(SERVICE_FEE)}</span></div>
         </div>
         <div className="flex justify-between py-5 text-base font-bold"><span>{t.cart.total}</span><span>{currency(subtotal + SERVICE_FEE)}</span></div>
-        {cartItems.some(item => item.product.type === "metal") && <ExchangeRateAttribution />}
         <Link href="/checkout" className="gold-button w-full">{t.cart.checkout}<ArrowRight size={16}/></Link>
       </aside>
     </div>

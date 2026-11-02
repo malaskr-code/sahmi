@@ -7,7 +7,6 @@ import { CompanyLogo } from "@/components/CompanyLogo";
 import { sectorLabel } from "@/data/sectors";
 import { formatKwd } from "@/lib/products";
 import { useStore } from "@/lib/store";
-import { ExchangeRateAttribution } from "@/components/ExchangeRateAttribution";
 import { formatQuantity } from "@/lib/metal-units";
 
 type PortfolioData = {
@@ -111,7 +110,6 @@ export default function PortfolioClient() {
       : error ? <section className="card p-7 text-center" role="alert"><p>{text.error}</p><button type="button" onClick={() => void load()} className="outline-button mt-5">{text.retry}</button></section>
         : !data?.holdings.length ? <section className="card flex min-h-72 flex-col items-center justify-center px-6 py-12 text-center"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--soft)] text-[var(--gold-dark)]"><BriefcaseBusiness size={24}/></span><h2 className="font-display mt-5 text-2xl font-semibold">{text.empty}</h2><Link href="/products" className="gold-button mt-6">{text.browse}<ArrowRight size={15}/></Link></section>
            : <div className="space-y-5">
-             {data.holdings.some(holding => holding.product.type === "metal") && <ExchangeRateAttribution />}
              {saleMessage && <p className="rounded-xl bg-[var(--green)]/10 px-4 py-3 text-sm text-[var(--green)]" role="status">{saleMessage}</p>}
             <section className="grid gap-3 sm:grid-cols-3">
               {[[text.cost, data.totalCostBasis], [text.current, data.totalCurrentValue], [text.gain, data.totalGain]].map(([label, value]) => <article key={String(label)} className="card p-5"><p className="text-xs text-[var(--muted)]">{label}</p><p className="mt-2 font-display text-2xl font-semibold">{currency(Number(value))}</p></article>)}

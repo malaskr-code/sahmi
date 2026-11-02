@@ -13,7 +13,6 @@ import { MarketStatus } from "@/components/MarketStatus";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { useStore } from "@/lib/store";
 import { sectorLabel } from "@/data/sectors";
-import { ExchangeRateAttribution } from "@/components/ExchangeRateAttribution";
 import { formatQuantity } from "@/lib/metal-units";
 
 export default function ProductDetailPage() {
@@ -122,7 +121,6 @@ export default function ProductDetailPage() {
             <div>
               <p className="text-xs text-[var(--muted)]">{isMetal ? lang === "ar" ? "السعر لكل غرام" : "Price per gram" : t.common.samplePrice}</p>
               <p className="mt-1 text-2xl font-bold">{currency(product.price)}{isMetal && <span dir="ltr" className="ms-1 text-sm font-medium text-[var(--muted)]">{lang === "ar" ? "/ غ" : "/ g"}</span>}</p>
-              {isMetal && <ExchangeRateAttribution />}
             </div>
             {!isMetal && <p className={`text-sm font-semibold ${product.change >= 0 ? "text-[var(--green)]" : "text-[var(--red)]"}`}>
               {product.change >= 0 ? "+" : ""}{product.change.toFixed(2)}% <span className="text-[var(--muted)]">{t.common.change}</span>

@@ -7,8 +7,8 @@ Use Gold API's public XAU/XAG spot-price endpoints, which return USD per troy ou
 
 Refresh the app's metal prices no more often than every 30 minutes. The exchange-rate provider updates daily; cache its rate rather than requesting it during every metal refresh. If an upstream call fails, keep the last saved KWD prices. The Gold API quote does not provide a daily-change percentage, so do not show one for metals.
 
-Whenever a KWD metal price is displayed, include a visible link to `https://www.exchangerate-api.com` labeled `Rates by ExchangeRate-API`.
+Show the required `https://www.exchangerate-api.com` attribution only once in the site footer: `Exchange rates by ExchangeRate` in English and `أسعار الصرف من ExchangeRate` in Arabic. Do not repeat it alongside metal prices or on product, cart, checkout, portfolio, gift, or admin content.
 
-**Why:** the user specified these sources, the 30-minute refresh interval, and the required attribution.
+**Why:** the user specified these sources and refresh limits, then asked for attribution to appear once in the footer instead of on each metal-price surface.
 
-**How to apply:** keep these constraints when changing the metal price refresh job, conversion, or any page that displays a converted metal price.
+**How to apply:** keep these constraints when changing price refresh or conversion logic; keep attribution localized and confined to the footer.

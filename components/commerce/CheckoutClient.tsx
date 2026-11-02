@@ -12,7 +12,6 @@ import { CardThemePreview } from "@/components/CardThemePreview";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { MarketStatus } from "@/components/MarketStatus";
 import { useCommerce, PageIntro, LoadingPanel, responseError } from "./shared";
-import { ExchangeRateAttribution } from "@/components/ExchangeRateAttribution";
 import { formatQuantity } from "@/lib/metal-units";
 
 type Mode = "wallet" | "card" | "demo";
@@ -231,7 +230,6 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
     <div className="mb-5"><Link href={backHref} className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--muted)] hover:text-[var(--gold-dark)]"><ArrowLeft size={15}/>{buyNow ? copy.checkout.backToProduct : copy.checkout.backToCart}</Link></div>
     <PageIntro eyebrow={copy.checkout.eyebrow} title={copy.checkout.title} subtitle={copy.checkout.subtitle}/>
      <MarketStatus products={products}/>
-     {products.some(product => product.type === "metal") && <ExchangeRateAttribution />}
     <form onSubmit={submitGift} className="mt-6 grid items-start gap-6 lg:grid-cols-[1fr_390px]">
       <div className="space-y-5">
         <section className="card p-5 sm:p-7">

@@ -1,12 +1,15 @@
+import { useStore } from "@/lib/store";
+
 export function ExchangeRateAttribution() {
+  const { lang } = useStore();
   return (
     <a
       href="https://www.exchangerate-api.com"
       target="_blank"
       rel="noreferrer"
-      className="mt-1 inline-block text-[10px] text-[var(--muted)] underline underline-offset-2 hover:text-[var(--gold-dark)]"
+      className="inline-block text-[10px] text-[var(--muted)] underline underline-offset-2 hover:text-[var(--gold-dark)]"
     >
-      Rates by ExchangeRate-API
+      {lang === "ar" ? "أسعار الصرف من ExchangeRate" : "Exchange rates by ExchangeRate"}
     </a>
   );
 }
