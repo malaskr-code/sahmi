@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import type { Product } from "@/lib/product-types";
@@ -12,18 +12,13 @@ type ScrollMorphHeroProps = {
 };
 
 const MIN_CARDS = 12;
-const MAX_CARDS = 20;
-const CARD_SIZE = 48;
+const CARD_COUNT = 12;
 
 export default function ScrollMorphHero({ lang, dark }: ScrollMorphHeroProps) {
   const isArabic = lang === "ar";
   const reduceMotion = useReducedMotion() ?? false;
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState(0);
   const [products, setProducts] = useState<Product[]>([]);
   const [loadState, setLoadState] = useState<"loading" | "loaded" | "error">("loading");
-  const [introComplete, setIntroComplete] = useState(reduceMotion);
-  const [pointer, setPointer] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -40,137 +35,47 @@ export default function ScrollMorphHero({ lang, dark }: ScrollMorphHeroProps) {
     return () => controller.abort();
   }, []);
 
-  useEffect(() => {
-    const node = containerRef.current;
-    if (!node) return;
-    const measure = () => setSize(Math.min(node.clientWidth, node.clientHeight));
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (reduceMotion) setIntroComplete(true);
-  }, [reduceMotion]);
-
   const cardProducts = useMemo(() => {
-    const activeCompanies = products.slice(0, MAX_CARDS);
+    const activeCompanies = products.slice(0, CARD_COUNT);
     if (!activeCompanies.length) return [];
-    const cardCount = Math.max(MIN_CARDS, activeCompanies.length);
-    return Array.from({ length: Math.min(MAX_CARDS, cardCount) }, (_, index) => activeCompanies[index % activeCompanies.length]);
+    return Array.from({ length: MIN_CARDS }, (_, index) => activeCompanies[index % activeCompanies.length]);
   }, [products]);
-
-  useEffect(() => {
-    if (reduceMotion || !size || !cardProducts.length) return;
-    const timer = window.setTimeout(() => setIntroComplete(true), 3000);
-    return () => window.clearTimeout(timer);
-  }, [cardProducts.length, reduceMotion, size]);
-
-  const positions = useMemo(() => {
-    if (!size || !cardProducts.length) return [];
-    const center = size / 2;
-    const radius = size * 0.22;
-    const lineSpacing = cardProducts.length > 1 ? (size - CARD_SIZE) / (cardProducts.length - 1) : 0;
-    return cardProducts.map((_, index) => {
-      const angle = (index / cardProducts.length) * Math.PI * 2 - Math.PI / 2;
-      const seed = index + 1;
-      const scatterX = ((seed * 47) % 181) - 90;
-      const scatterY = ((seed * 73) % 181) - 90;
-      return {
-        circle: {
-          x: center + Math.cos(angle) * radius - CARD_SIZE / 2,
-          y: center + Math.sin(angle) * radius - CARD_SIZE / 2,
-        },
-        line: {
-          x: center + (index - (cardProducts.length - 1) / 2) * lineSpacing - CARD_SIZE / 2,
-          y: center - CARD_SIZE / 2,
-        },
-        scatter: { x: center + scatterX - CARD_SIZE / 2, y: center + scatterY - CARD_SIZE / 2 },
-      };
-    });
-  }, [cardProducts, size]);
-
-  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.pointerType === "touch" || reduceMotion) return;
-    const bounds = event.currentTarget.getBoundingClientRect();
-    setPointer({
-      x: Math.max(-20, Math.min(20, (event.clientX - bounds.left - bounds.width / 2) / bounds.width * 40)),
-      y: Math.max(-20, Math.min(20, (event.clientY - bounds.top - bounds.height / 2) / bounds.height * 40)),
-    });
-  };
-
-  const handlePointerLeave = () => {
-    setPointer({ x: 0, y: 0 });
-  };
 
   if (loadState === "error" || (loadState === "loaded" && !cardProducts.length)) return null;
 
   return (
     <div
-      ref={containerRef}
-      className="relative aspect-square w-full overflow-visible"
-      onPointerMove={handlePointerMove}
-      onPointerLeave={handlePointerLeave}
+      className="relative flex aspect-square w-full items-center justify-center overflow-visible"
       dir={isArabic ? "rtl" : "ltr"}
       role="group"
       aria-label={isArabic ? "شعارات الشركات وأسعارها" : "Company logos and prices"}
     >
       {loadState === "loading" ? (
         <div
-          className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[44%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#C9A227]/25"
+          className="pointer-events-none grid w-max grid-cols-4 gap-3.5 opacity-30 md:gap-5"
           aria-hidden="true"
-        />
+        >
+          {Array.from({ length: CARD_COUNT }, (_, index) => (
+            <span key={index} className="h-[52px] w-[52px] rounded-xl border border-[#C9A227] bg-[#FBF8F1] md:h-16 md:w-16" />
+          ))}
+        </div>
       ) : null}
-      <motion.div
-        className="absolute inset-0"
-        animate={{
-          x: reduceMotion ? 0 : pointer.x,
-          y: reduceMotion ? 0 : pointer.y,
-          rotate: reduceMotion || !introComplete ? 0 : 360,
-        }}
-        transition={{
-          x: { type: "spring", stiffness: 45, damping: 18 },
-          y: { type: "spring", stiffness: 45, damping: 18 },
-          rotate: introComplete && !reduceMotion
-            ? { duration: 40, ease: "linear", repeat: Infinity }
-            : { duration: 0 },
-        }}
-        style={{ transformOrigin: "50% 50%" }}
-      >
-        {positions.map((position, index) => {
-          const started = reduceMotion || introComplete;
-          const product = cardProducts[index];
+      {loadState === "loaded" ? (
+        <div className="grid w-max grid-cols-4 gap-3.5 md:gap-5">
+        {cardProducts.map((product, index) => {
           const name = (isArabic ? product.nameAr : product.name) || product.ticker;
           const cardShadow = dark
             ? "0 8px 20px rgba(201, 162, 39, 0.26)"
             : "0 8px 18px rgba(27, 42, 68, 0.16)";
           const changeColor = product.change >= 0 ? "#36C77B" : "#F06B72";
-          const rotation = reduceMotion || !introComplete ? 0 : -360;
+          const seed = index + 1;
           return (
             <motion.div
               key={`${product.id}-${index}`}
-              className="absolute h-12 w-12 [perspective:800px]"
-              style={{ left: 0, top: 0 }}
-              initial={reduceMotion ? { ...position.circle, opacity: 1 } : { ...position.scatter, opacity: 0 }}
-              animate={started
-                ? { ...position.circle, opacity: 1, rotate: rotation }
-                : { ...position.line, opacity: 1, rotate: 0 }}
-              transition={reduceMotion
-                ? { duration: 0 }
-                : started
-                  ? {
-                      x: { type: "spring", stiffness: 72, damping: 18, delay: index * 0.045 },
-                      y: { type: "spring", stiffness: 72, damping: 18, delay: index * 0.045 },
-                      opacity: { duration: 0.4, delay: index * 0.045 },
-                      rotate: introComplete
-                        ? { duration: 40, ease: "linear", repeat: Infinity }
-                        : { duration: 0 },
-                    }
-                  : { type: "spring", stiffness: 68, damping: 16, delay: index * 0.055 }}
-              onAnimationComplete={() => {
-                if (index === positions.length - 1 && !reduceMotion) setIntroComplete(true);
-              }}
+              className="relative h-[52px] w-[52px] [perspective:800px] md:h-16 md:w-16"
+              initial={reduceMotion ? false : { x: ((seed * 47) % 81) - 40, y: ((seed * 73) % 81) - 40, opacity: 0 }}
+              animate={{ x: 0, y: 0, opacity: 1 }}
+              transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 150, damping: 19, delay: index * 0.035 }}
             >
               <Link
                 href={`/products/${encodeURIComponent(product.id)}`}
@@ -216,7 +121,8 @@ export default function ScrollMorphHero({ lang, dark }: ScrollMorphHeroProps) {
             </motion.div>
           );
         })}
-      </motion.div>
+        </div>
+      ) : null}
     </div>
   );
 }
