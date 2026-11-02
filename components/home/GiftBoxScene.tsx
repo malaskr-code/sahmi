@@ -18,6 +18,26 @@ const HOLD_SECONDS = 2;
 const CYCLE_SECONDS = OPEN_SECONDS * 2 + HOLD_SECONDS;
 const GOLD_MATERIAL = { color: GOLD, metalness: 1, roughness: 0.28 };
 
+function createBowLoopGeometry() {
+  const shape = new THREE.Shape();
+  shape.absellipse(0, 0, 0.18, 0.125, 0, Math.PI * 2, false, 0);
+  const opening = new THREE.Path();
+  opening.absellipse(0, 0, 0.115, 0.062, 0, Math.PI * 2, true, 0);
+  shape.holes.push(opening);
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: 0.035,
+    bevelEnabled: true,
+    bevelSegments: 3,
+    steps: 1,
+    bevelSize: 0.009,
+    bevelThickness: 0.009,
+    curveSegments: 32,
+  });
+  geometry.translate(0, 0, -0.0225);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function smoothStep(value: number) {
   const t = THREE.MathUtils.clamp(value, 0, 1);
   return t * t * (3 - 2 * t);
@@ -61,6 +81,19 @@ function Sprout({ groupRef }: { groupRef: RefObject<THREE.Group | null> }) {
   );
 }
 
+function BowLoop({ position, rotation, scale }: {
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale: [number, number, number];
+}) {
+  const geometry = useMemo(createBowLoopGeometry, []);
+  return (
+    <mesh geometry={geometry} position={position} rotation={rotation} scale={scale} castShadow>
+      <meshPhysicalMaterial {...GOLD_MATERIAL} clearcoat={0.32} clearcoatRoughness={0.22} side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
+
 function GiftBoxModel({
   dark,
   reducedMotion,
@@ -74,6 +107,29 @@ function GiftBoxModel({
   const elapsed = useRef(0);
   const autoTimer = useRef(0);
   const clock = useRef(0);
+  const paperRoughness = useMemo(() => {
+    const size = 128;
+    const data = new Uint8Array(size * size * 4);
+    let seed = 48271;
+    for (let index = 0; index < size * size; index += 1) {
+      seed = (seed * 16807) % 2147483647;
+      const value = 238 + (seed % 18);
+      const offset = index * 4;
+      data[offset] = 255;
+      data[offset + 1] = value;
+      data[offset + 2] = 255;
+      data[offset + 3] = 255;
+    }
+    const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 2);
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.generateMipmaps = true;
+    texture.needsUpdate = true;
+    return texture;
+  }, []);
 
   const startSequence = () => {
     if (!reducedMotion) elapsed.current = 0.0001;
@@ -122,6 +178,7 @@ function GiftBoxModel({
   const boxMaterial = {
     color: boxColor,
     roughness: 0.55,
+    roughnessMap: paperRoughness,
     clearcoat: 0.3,
     clearcoatRoughness: 0.4,
   };
@@ -183,18 +240,26 @@ function GiftBoxModel({
           </mesh>
 
           {/* Bow loops, tilted outward, with a small central knot. */}
-          <mesh position={[-0.14, 0.27, 0.74]} rotation={[0.15, -0.2, -0.52]} scale={[1, 0.82, 0.72]} castShadow>
-            <torusGeometry args={[0.16, 0.045, 12, 32]} />
-            <meshStandardMaterial {...GOLD_MATERIAL} />
-          </mesh>
-          <mesh position={[0.14, 0.27, 0.74]} rotation={[-0.12, 0.2, 0.52]} scale={[1, 0.82, 0.72]} castShadow>
-            <torusGeometry args={[0.16, 0.045, 12, 32]} />
-            <meshStandardMaterial {...GOLD_MATERIAL} />
-          </mesh>
+          <BowLoop
+            position={[-0.14, 0.27, 0.74]}
+            rotation={[0.15, -0.2, -0.52]}
+            scale={[1, 0.82, 0.72]}
+          />
+          <BowLoop
+            position={[0.14, 0.27, 0.74]}
+            rotation={[-0.12, 0.2, 0.52]}
+            scale={[1, 0.82, 0.72]}
+          />
           <mesh position={[0, 0.28, 0.76]} scale={[0.105, 0.08, 0.09]} castShadow>
             <sphereGeometry args={[1, 18, 14]} />
-            <meshStandardMaterial {...GOLD_MATERIAL} />
+            <meshPhysicalMaterial {...GOLD_MATERIAL} clearcoat={0.38} clearcoatRoughness={0.2} />
           </mesh>
+          <RoundedBox position={[-0.09, 0.14, 0.86]} args={[0.13, 0.035, 0.28]} radius={0.014} smoothness={3} rotation={[0, -0.24, 0]} castShadow>
+            <meshPhysicalMaterial {...GOLD_MATERIAL} clearcoat={0.28} clearcoatRoughness={0.24} />
+          </RoundedBox>
+          <RoundedBox position={[0.09, 0.14, 0.86]} args={[0.13, 0.035, 0.28]} radius={0.014} smoothness={3} rotation={[0, 0.24, 0]} castShadow>
+            <meshPhysicalMaterial {...GOLD_MATERIAL} clearcoat={0.28} clearcoatRoughness={0.24} />
+          </RoundedBox>
         </group>
 
         <Sprout groupRef={sprout} />
