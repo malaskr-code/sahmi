@@ -12,14 +12,13 @@
     "test:auth-browser": "node tests/auth-browser.mjs"
   },
   "dependencies": {
-    "@react-three/drei": "^10.7.9",
-    "@react-three/fiber": "^9.8.2",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.5",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "bcryptjs": "^3.0.3",
+    "framer-motion": "^14.9.0",
     "jose": "^6.2.12",
     "lucide-react": "^1.59.0",
     "mongoose": "^9.11.2",
@@ -30,7 +29,6 @@
     "react-dom": "^19.3.1",
     "recharts": "^3.10.1",
     "tailwindcss": "^4.3.3",
-    "three": "^0.187.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
