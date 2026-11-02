@@ -15,7 +15,7 @@ type ScrollMorphHeroProps = {
 const MIN_CARDS = 12;
 const CARD_COUNT = 12;
 const PHASE_DURATIONS = {
-  grid: 10_000,
+  grid: 5_000,
   stacking: 800,
   morphing: 600,
   gift: 3_000,
