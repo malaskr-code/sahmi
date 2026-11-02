@@ -1,8 +1,8 @@
 "use client";
 
-import { Canvas, useFrame } from "@react-three/fiber";
-import { RoundedBox } from "@react-three/drei";
-import { useRef } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { ContactShadows, Environment, Lightformer, RoundedBox } from "@react-three/drei";
+import { useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import * as THREE from "three";
 
 type GiftBoxSceneProps = {
@@ -11,15 +11,54 @@ type GiftBoxSceneProps = {
   active?: boolean;
 };
 
-const GOLD = "#c9a227";
-const LID_OPEN_ANGLE = -0.82;
+const GOLD = "#C9A227";
+const OPEN_ANGLE = -THREE.MathUtils.degToRad(35);
 const OPEN_SECONDS = 0.62;
 const HOLD_SECONDS = 2;
 const CYCLE_SECONDS = OPEN_SECONDS * 2 + HOLD_SECONDS;
+const GOLD_MATERIAL = { color: GOLD, metalness: 1, roughness: 0.28 };
 
 function smoothStep(value: number) {
   const t = THREE.MathUtils.clamp(value, 0, 1);
   return t * t * (3 - 2 * t);
+}
+
+function CameraAim() {
+  const camera = useThree(state => state.camera);
+  useLayoutEffect(() => {
+    camera.lookAt(0, 0.08, 0);
+    camera.updateProjectionMatrix();
+  }, [camera]);
+  return null;
+}
+
+function Sprout({ groupRef }: { groupRef: RefObject<THREE.Group | null> }) {
+  const stemGeometry = useMemo(() => {
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(-0.035, 0.16, 0),
+      new THREE.Vector3(0.025, 0.32, 0),
+      new THREE.Vector3(0.075, 0.48, 0),
+    ]);
+    return new THREE.TubeGeometry(curve, 16, 0.018, 8, false);
+  }, []);
+
+  return (
+    <group ref={groupRef} position={[0, 1.02, 0]} scale={[1, 0, 1]}>
+      <mesh geometry={stemGeometry} castShadow>
+        <meshStandardMaterial {...GOLD_MATERIAL} />
+      </mesh>
+      <RoundedBox position={[-0.11, 0.21, 0]} args={[0.09, 0.14, 0.07]} radius={0.035} smoothness={3} rotation={[0, 0, -0.42]} castShadow>
+        <meshStandardMaterial {...GOLD_MATERIAL} />
+      </RoundedBox>
+      <RoundedBox position={[0.015, 0.34, 0]} args={[0.09, 0.19, 0.07]} radius={0.035} smoothness={3} rotation={[0, 0, 0.13]} castShadow>
+        <meshStandardMaterial {...GOLD_MATERIAL} />
+      </RoundedBox>
+      <RoundedBox position={[0.12, 0.48, 0]} args={[0.09, 0.25, 0.07]} radius={0.035} smoothness={3} rotation={[0, 0, 0.4]} castShadow>
+        <meshStandardMaterial {...GOLD_MATERIAL} />
+      </RoundedBox>
+    </group>
+  );
 }
 
 function GiftBoxModel({
@@ -44,7 +83,7 @@ function GiftBoxModel({
     if (!root.current || !lidHinge.current || !sprout.current) return;
     if (reducedMotion) {
       root.current.position.y = 0;
-      root.current.rotation.y = -0.18;
+      root.current.rotation.y = -0.2;
       lidHinge.current.rotation.x = 0;
       sprout.current.scale.y = 0;
       return;
@@ -73,101 +112,95 @@ function GiftBoxModel({
       }
     }
 
-    root.current.position.y = Math.sin(clock.current * 1.3) * 0.045;
-    root.current.rotation.y = -0.18 + Math.sin(clock.current * 0.32) * 0.14;
-    lidHinge.current.rotation.x = LID_OPEN_ANGLE * opening;
+    root.current.position.y = Math.sin(clock.current * 1.1) * 0.035;
+    root.current.rotation.y = -0.2 + Math.sin(clock.current * 0.28) * 0.12;
+    lidHinge.current.rotation.x = OPEN_ANGLE * opening;
     sprout.current.scale.y = opening;
   });
 
-  const bodyColor = dark ? "#17263a" : "#f3eee2";
-  const lidColor = dark ? "#203149" : "#fbf8ef";
-  const goldMaterial = { color: GOLD, metalness: 0.72, roughness: 0.28 };
+  const boxColor = dark ? "#1B2A44" : "#F3EEE3";
+  const boxMaterial = {
+    color: boxColor,
+    roughness: 0.55,
+    clearcoat: 0.3,
+    clearcoatRoughness: 0.4,
+  };
 
   return (
-    <group ref={root} onPointerEnter={startSequence}>
-      {/* Main wrapped parcel */}
-      <RoundedBox position={[0, 0.77, 0]} args={[2.35, 1.48, 1.72]} radius={0.09} smoothness={4} castShadow receiveShadow>
-        <meshStandardMaterial color={bodyColor} roughness={0.39} metalness={0.02} />
-      </RoundedBox>
-
-      {/* Ribbon bands wrap the front, back, and sides of the box */}
-      <mesh position={[0, 0.78, 0.866]} castShadow>
-        <boxGeometry args={[0.25, 1.5, 0.025]} />
-        <meshStandardMaterial {...goldMaterial} />
-      </mesh>
-      <mesh position={[0, 0.78, -0.866]} castShadow>
-        <boxGeometry args={[0.25, 1.5, 0.025]} />
-        <meshStandardMaterial {...goldMaterial} />
-      </mesh>
-      <mesh position={[1.185, 0.78, 0]} castShadow>
-        <boxGeometry args={[0.025, 1.5, 0.25]} />
-        <meshStandardMaterial {...goldMaterial} />
-      </mesh>
-      <mesh position={[-1.185, 0.78, 0]} castShadow>
-        <boxGeometry args={[0.025, 1.5, 0.25]} />
-        <meshStandardMaterial {...goldMaterial} />
-      </mesh>
-      <mesh position={[0, 1.525, 0]} castShadow>
-        <boxGeometry args={[2.37, 0.025, 0.25]} />
-        <meshStandardMaterial {...goldMaterial} />
-      </mesh>
-
-      {/* Lid pivots from its back edge so the gift opens as one piece */}
-      <group ref={lidHinge} position={[0, 1.49, -0.79]}>
-        <RoundedBox position={[0, 0.095, 0.81]} args={[2.5, 0.22, 1.78]} radius={0.075} smoothness={4} castShadow receiveShadow>
-          <meshStandardMaterial color={lidColor} roughness={0.35} />
+    <group position={[0, -0.84, 0]}>
+      <group ref={root} onPointerEnter={startSequence}>
+        {/* The base is 1.4 × 1 × 1.4, with all ribbon surfaces offset 0.005. */}
+        <RoundedBox position={[0, 0.5, 0]} args={[1.4, 1, 1.4]} radius={0.06} smoothness={5} castShadow receiveShadow>
+          <meshPhysicalMaterial {...boxMaterial} />
         </RoundedBox>
-        <mesh position={[0, 0.212, 0.81]} castShadow>
-          <boxGeometry args={[2.47, 0.018, 0.24]} />
-          <meshStandardMaterial {...goldMaterial} />
+
+        {/* Crossed bands wrap the four base faces and continue over the lid. */}
+        <mesh position={[0, 0.5, 0.705]} castShadow>
+          <boxGeometry args={[0.16, 1, 0.01]} />
+          <meshStandardMaterial {...GOLD_MATERIAL} />
         </mesh>
-        <mesh position={[0, 0.212, 0.81]} castShadow>
-          <boxGeometry args={[0.24, 0.018, 1.76]} />
-          <meshStandardMaterial {...goldMaterial} />
+        <mesh position={[0, 0.5, -0.705]} castShadow>
+          <boxGeometry args={[0.16, 1, 0.01]} />
+          <meshStandardMaterial {...GOLD_MATERIAL} />
+        </mesh>
+        <mesh position={[0.705, 0.5, 0]} castShadow>
+          <boxGeometry args={[0.01, 1, 0.16]} />
+          <meshStandardMaterial {...GOLD_MATERIAL} />
+        </mesh>
+        <mesh position={[-0.705, 0.5, 0]} castShadow>
+          <boxGeometry args={[0.01, 1, 0.16]} />
+          <meshStandardMaterial {...GOLD_MATERIAL} />
         </mesh>
 
-        {/* Soft sculpted bow loops, knot, and short ribbon tails */}
-        <mesh position={[-0.23, 0.34, 0.82]} rotation={[0.25, -0.3, -0.52]} scale={[1.08, 0.78, 0.56]} castShadow>
-          <torusGeometry args={[0.25, 0.065, 12, 36]} />
-          <meshStandardMaterial {...goldMaterial} />
-        </mesh>
-        <mesh position={[0.23, 0.34, 0.82]} rotation={[-0.18, 0.28, 0.52]} scale={[1.08, 0.78, 0.56]} castShadow>
-          <torusGeometry args={[0.25, 0.065, 12, 36]} />
-          <meshStandardMaterial {...goldMaterial} />
-        </mesh>
-        <mesh position={[0, 0.35, 0.82]} scale={[0.16, 0.12, 0.13]} castShadow>
-          <sphereGeometry args={[1, 20, 16]} />
-          <meshStandardMaterial {...goldMaterial} />
-        </mesh>
-        <mesh position={[-0.18, 0.25, 0.83]} rotation={[0, 0, -0.35]} castShadow>
-          <boxGeometry args={[0.18, 0.3, 0.07]} />
-          <meshStandardMaterial {...goldMaterial} />
-        </mesh>
-        <mesh position={[0.18, 0.25, 0.83]} rotation={[0, 0, 0.35]} castShadow>
-          <boxGeometry args={[0.18, 0.3, 0.07]} />
-          <meshStandardMaterial {...goldMaterial} />
-        </mesh>
+        {/* Hinge pivot sits on the back edge; the open angle is limited to 35°. */}
+        <group ref={lidHinge} position={[0, 1.11, -0.74]}>
+          <RoundedBox position={[0, 0, 0.74]} args={[1.48, 0.22, 1.48]} radius={0.06} smoothness={5} castShadow receiveShadow>
+            <meshPhysicalMaterial {...boxMaterial} />
+          </RoundedBox>
+          <mesh position={[0, 0.115, 0.74]} castShadow>
+            <boxGeometry args={[1.48, 0.01, 0.16]} />
+            <meshStandardMaterial {...GOLD_MATERIAL} />
+          </mesh>
+          <mesh position={[0, 0.115, 0.74]} castShadow>
+            <boxGeometry args={[0.16, 0.01, 1.48]} />
+            <meshStandardMaterial {...GOLD_MATERIAL} />
+          </mesh>
+          <mesh position={[0, 0, 1.485]} castShadow>
+            <boxGeometry args={[0.16, 0.22, 0.01]} />
+            <meshStandardMaterial {...GOLD_MATERIAL} />
+          </mesh>
+          <mesh position={[0, 0, 0.005]} castShadow>
+            <boxGeometry args={[0.16, 0.22, 0.01]} />
+            <meshStandardMaterial {...GOLD_MATERIAL} />
+          </mesh>
+          <mesh position={[0.745, 0, 0.74]} castShadow>
+            <boxGeometry args={[0.01, 0.22, 0.16]} />
+            <meshStandardMaterial {...GOLD_MATERIAL} />
+          </mesh>
+          <mesh position={[-0.745, 0, 0.74]} castShadow>
+            <boxGeometry args={[0.01, 0.22, 0.16]} />
+            <meshStandardMaterial {...GOLD_MATERIAL} />
+          </mesh>
+
+          {/* Bow loops, tilted outward, with a small central knot. */}
+          <mesh position={[-0.14, 0.27, 0.74]} rotation={[0.15, -0.2, -0.52]} scale={[1, 0.82, 0.72]} castShadow>
+            <torusGeometry args={[0.16, 0.045, 12, 32]} />
+            <meshStandardMaterial {...GOLD_MATERIAL} />
+          </mesh>
+          <mesh position={[0.14, 0.27, 0.74]} rotation={[-0.12, 0.2, 0.52]} scale={[1, 0.82, 0.72]} castShadow>
+            <torusGeometry args={[0.16, 0.045, 12, 32]} />
+            <meshStandardMaterial {...GOLD_MATERIAL} />
+          </mesh>
+          <mesh position={[0, 0.28, 0.76]} scale={[0.105, 0.08, 0.09]} castShadow>
+            <sphereGeometry args={[1, 18, 14]} />
+            <meshStandardMaterial {...GOLD_MATERIAL} />
+          </mesh>
+        </group>
+
+        <Sprout groupRef={sprout} />
       </group>
 
-      {/* A tiny rising keepsake: stem and three ascending bar-shaped leaves */}
-      <group ref={sprout} position={[0, 1.55, 0]} scale={[1, 0, 1]}>
-        <mesh position={[0, 0.35, 0]} castShadow>
-          <cylinderGeometry args={[0.026, 0.04, 0.72, 12]} />
-          <meshStandardMaterial {...goldMaterial} />
-        </mesh>
-        <mesh position={[-0.13, 0.29, 0]} rotation={[0, 0, -0.57]} castShadow>
-          <boxGeometry args={[0.1, 0.25, 0.09]} />
-          <meshStandardMaterial {...goldMaterial} />
-        </mesh>
-        <mesh position={[0.13, 0.52, 0]} rotation={[0, 0, 0.57]} castShadow>
-          <boxGeometry args={[0.1, 0.28, 0.09]} />
-          <meshStandardMaterial {...goldMaterial} />
-        </mesh>
-        <mesh position={[-0.1, 0.76, 0]} rotation={[0, 0, -0.45]} castShadow>
-          <boxGeometry args={[0.09, 0.23, 0.08]} />
-          <meshStandardMaterial {...goldMaterial} />
-        </mesh>
-      </group>
+      <ContactShadows position={[0, 0, 0]} scale={3.4} opacity={0.35} blur={2.5} far={1.5} />
     </group>
   );
 }
@@ -183,8 +216,9 @@ export default function GiftBoxScene({
       style={{
         width: "100%",
         height: "100%",
+        minHeight: 0,
         position: "relative",
-        overflow: "hidden",
+        overflow: "visible",
         touchAction: "pan-y",
         cursor: reducedMotion ? "default" : "pointer",
       }}
@@ -193,33 +227,27 @@ export default function GiftBoxScene({
         frameloop={active && !reducedMotion ? "always" : "never"}
         shadows
         dpr={[1, 1.5]}
-        camera={{ position: [4.2, 3.25, 5.2], fov: 35, near: 0.1, far: 40 }}
+        camera={{ position: [3, 2.5, 3.95], fov: 30, near: 0.1, far: 30 }}
         gl={{ alpha: true, antialias: true, powerPreference: "low-power" }}
-        style={{ width: "100%", height: "100%", background: "transparent" }}
+        onCreated={({ gl }) => {
+          gl.toneMapping = THREE.ACESFilmicToneMapping;
+          gl.outputColorSpace = THREE.SRGBColorSpace;
+        }}
+        style={{ width: "100%", height: "100%", overflow: "visible", background: "transparent" }}
       >
-        <ambientLight intensity={dark ? 0.85 : 0.72} />
-        <hemisphereLight args={["#fff6dc", dark ? "#26344a" : "#d9cfb8", 1.15]} />
-        <directionalLight
-          position={[-4.5, 7, 5]}
-          intensity={dark ? 2.3 : 2.7}
-          color="#fff1cf"
-          castShadow
-          shadow-mapSize={[1024, 1024]}
-          shadow-camera-left={-4}
-          shadow-camera-right={4}
-          shadow-camera-top={4}
-          shadow-camera-bottom={-4}
-          shadow-bias={-0.0004}
-        />
-        <directionalLight position={[4, 3, -4]} intensity={dark ? 0.55 : 0.35} color="#e9c96c" />
-        <GiftBoxModel
-          dark={dark}
-          reducedMotion={reducedMotion}
-        />
-        <mesh position={[0, -0.035, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <planeGeometry args={[200, 200]} />
-          <shadowMaterial transparent opacity={dark ? 0.28 : 0.19} />
-        </mesh>
+        <CameraAim />
+        <ambientLight intensity={dark ? 0.55 : 0.7} />
+        <directionalLight position={[-4, 6, 4]} intensity={dark ? 1.5 : 1.8} color="#fff1d5" />
+        <directionalLight position={[4, 3, 2]} intensity={0.7} color="#fffaf0" />
+        <directionalLight position={[0, 4, -5]} intensity={1} color="#f2dcaa" />
+
+        <Environment resolution={256} background={false} frames={1}>
+          <Lightformer form="rect" intensity={3.8} color="#fff0d0" position={[-3, 5, 4]} rotation={[0.1, 0.45, 0]} scale={[4, 3, 1]} />
+          <Lightformer form="rect" intensity={1.8} color="#fffaf2" position={[4, 2.5, 1]} rotation={[0, -0.8, 0]} scale={[3, 4, 1]} />
+          <Lightformer form="rect" intensity={2.4} color="#f3d58a" position={[0, 4, -4]} rotation={[0, Math.PI, 0]} scale={[4, 2.5, 1]} />
+        </Environment>
+
+        <GiftBoxModel dark={dark} reducedMotion={reducedMotion} />
       </Canvas>
     </div>
   );

@@ -142,7 +142,7 @@ export default function HomePage() {
           </div>
           <div
             ref={sceneRef}
-            className="relative mx-auto h-[220px] w-full max-w-[280px] md:h-[420px] md:max-w-[430px]"
+            className="relative mx-auto h-[240px] w-full max-w-[240px] md:h-[420px] md:max-w-none"
             aria-hidden="true"
           >
             {canAnimate ? (
