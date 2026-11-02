@@ -13,7 +13,7 @@ type ScrollMorphHeroProps = {
 
 const MIN_CARDS = 12;
 const MAX_CARDS = 20;
-const CARD_SIZE = 64;
+const CARD_SIZE = 48;
 
 export default function ScrollMorphHero({ lang, dark }: ScrollMorphHeroProps) {
   const isArabic = lang === "ar";
@@ -70,7 +70,7 @@ export default function ScrollMorphHero({ lang, dark }: ScrollMorphHeroProps) {
   const positions = useMemo(() => {
     if (!size || !cardProducts.length) return [];
     const center = size / 2;
-    const radius = size * 0.35;
+    const radius = size * 0.22;
     const lineSpacing = cardProducts.length > 1 ? (size - CARD_SIZE) / (cardProducts.length - 1) : 0;
     return cardProducts.map((_, index) => {
       const angle = (index / cardProducts.length) * Math.PI * 2 - Math.PI / 2;
@@ -118,7 +118,7 @@ export default function ScrollMorphHero({ lang, dark }: ScrollMorphHeroProps) {
     >
       {loadState === "loading" ? (
         <div
-          className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#C9A227]/25"
+          className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[44%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#C9A227]/25"
           aria-hidden="true"
         />
       ) : null}
@@ -150,7 +150,7 @@ export default function ScrollMorphHero({ lang, dark }: ScrollMorphHeroProps) {
           return (
             <motion.div
               key={`${product.id}-${index}`}
-              className="absolute h-16 w-16 [perspective:800px]"
+              className="absolute h-12 w-12 [perspective:800px]"
               style={{ left: 0, top: 0 }}
               initial={reduceMotion ? { ...position.circle, opacity: 1 } : { ...position.scatter, opacity: 0 }}
               animate={started
@@ -185,7 +185,7 @@ export default function ScrollMorphHero({ lang, dark }: ScrollMorphHeroProps) {
                   style={{ transformStyle: "preserve-3d" }}
                 >
                   <span
-                    className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-xl border border-[#C9A227] bg-[#FBF8F1] p-1"
+                    className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-xl border border-[#C9A227] bg-[#FBF8F1] p-1.5"
                     style={{ backfaceVisibility: "hidden", boxShadow: cardShadow }}
                   >
                     {product.image ? (
