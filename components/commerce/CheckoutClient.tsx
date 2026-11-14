@@ -334,7 +334,6 @@ export default function CheckoutClient({ buyNow }: { buyNow: BuyNow | null }) {
         <button type="button" onClick={() => void refreshPriceAndQuote()} disabled={refreshingPrice || quoting} className="mt-4 w-full text-xs font-semibold text-[var(--gold-dark)] underline underline-offset-4 disabled:opacity-50">{copy.checkout.reloadProduct}</button>
         {submitError && <p className="mt-4 text-sm leading-6 text-[var(--red)]" role="alert">{submitError}</p>}
         <button type="submit" disabled={pending || quoting || refreshingPrice || !quoteToken} className="gold-button mt-5 w-full disabled:cursor-wait disabled:opacity-55">{pending ? copy.checkout.paying : payment === "demo" ? copy.checkout.generateGiftCode : quote && quote.card === 0 ? copy.checkout.walletPay : copy.checkout.pay}<ArrowRight size={16}/></button>
-        <p className="mt-3 text-center text-[10px] leading-5 text-[var(--muted)]">{copy.checkout.feeNote}</p>
       </aside>
     </form>
   </main>;

@@ -387,7 +387,7 @@ export async function startGiftCheckout(user: { id: string; email: string; name?
   if (
     priceQuote.walletFils !== expectedWalletFils ||
     priceQuote.cardChargeFils !== expectedCardFils ||
-    cardFilsFromQuote !== priceQuote.cardChargeFils
+    (gift.payment === "card" && cardFilsFromQuote !== priceQuote.cardChargeFils)
   ) throw new PaymentError("priceQuoteExpired", 409);
   if (!Number.isSafeInteger(totalFils) || totalFils > MAX_PAYMENT_AMOUNT_FILS) throw new PaymentError("invalidAmount");
   if (priceQuote.cardChargeFils > 0) assertTapConfigured();

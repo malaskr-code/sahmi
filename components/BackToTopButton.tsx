@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { ArrowUp } from "lucide-react";
 import { useStore } from "@/lib/store";
 
 export function BackToTopButton() {
   const { t } = useStore();
+  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [nearFooter, setNearFooter] = useState(false);
 
@@ -28,7 +30,7 @@ export function BackToTopButton() {
     };
   }, []);
 
-  if (!visible || nearFooter) return null;
+  if (pathname === "/checkout" || !visible || nearFooter) return null;
   return (
     <button
       type="button"
