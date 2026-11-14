@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
+import { useRouter } from "next/navigation";
 import {
   Building2,
   ChartColumnIncreasing,
   LayoutDashboard,
+  ShieldCheck,
   ShoppingBag,
   UsersRound,
 } from "lucide-react";
@@ -14,9 +16,10 @@ import { AdminOrders } from "./admin/AdminOrders";
 import { AdminCompanies } from "./admin/AdminCompanies";
 import { AdminPrices } from "./admin/AdminPrices";
 import { AdminUsers } from "./admin/AdminUsers";
+import { AdminAdmins } from "./admin/AdminAdmins";
 import { useAdminCopy } from "./admin/admin-ui";
 
-const tabs: Array<{ id: AdminTab; icon: typeof LayoutDashboard }> = [
+const tabs: Array<{ id: Exclude<AdminTab, "admins">; icon: typeof LayoutDashboard }> = [
   { id: "overview", icon: LayoutDashboard },
   { id: "orders", icon: ShoppingBag },
   { id: "companies", icon: Building2 },
@@ -24,15 +27,22 @@ const tabs: Array<{ id: AdminTab; icon: typeof LayoutDashboard }> = [
   { id: "users", icon: UsersRound },
 ];
 
-export function AdminDashboardClient() {
+export function AdminDashboardClient({ isOwner, initialTab }: { isOwner: boolean; initialTab: AdminTab }) {
   const { lang, copy } = useAdminCopy();
-  const [active, setActive] = useState<AdminTab>("overview");
+  const router = useRouter();
+  const [active, setActive] = useState<AdminTab>(initialTab);
+  useEffect(() => setActive(initialTab), [initialTab]);
+  const visibleTabs: Array<{ id: AdminTab; icon: typeof LayoutDashboard }> = [
+    ...tabs,
+    ...(isOwner ? [{ id: "admins" as const, icon: ShieldCheck }] : []),
+  ];
   const panel = {
     overview: <AdminOverview />,
     orders: <AdminOrders />,
     companies: <AdminCompanies />,
     prices: <AdminPrices />,
     users: <AdminUsers />,
+    admins: <AdminAdmins />,
   }[active];
   const themeVariables = {
     "--surface": "var(--paper)",
@@ -50,14 +60,17 @@ export function AdminDashboardClient() {
 
       <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-start">
         <nav aria-label={copy.title} className="flex gap-2 overflow-x-auto rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-2 md:w-56 md:shrink-0 md:flex-col md:overflow-visible">
-          {tabs.map(({ id, icon: Icon }) => {
+          {visibleTabs.map(({ id, icon: Icon }) => {
             const selected = active === id;
             return (
               <button
                 key={id}
                 type="button"
                 aria-current={selected ? "page" : undefined}
-                onClick={() => setActive(id)}
+                onClick={() => {
+                  setActive(id);
+                  router.push(id === "overview" ? "/admin" : `/admin?tab=${id}`, { scroll: false });
+                }}
                 className={`inline-flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl px-3 text-sm font-medium transition md:w-full ${
                   selected
                     ? "bg-[var(--gold-soft)] text-[var(--gold-dark)]"

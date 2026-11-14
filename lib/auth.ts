@@ -73,3 +73,16 @@ export async function requireAdmin() {
   if (!user || user.role !== "admin") forbidden();
   return user;
 }
+
+export async function isOwner(user: Pick<AuthUser, "id"> | null | undefined) {
+  const ownerEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  if (!ownerEmail || !user?.id || !mongoose.isValidObjectId(user.id)) return false;
+  await connectDB();
+  const account = await User.findById(user.id).select("email disabled").lean();
+  return Boolean(
+    account &&
+    !account.disabled &&
+    typeof account.email === "string" &&
+    account.email.trim().toLowerCase() === ownerEmail
+  );
+}

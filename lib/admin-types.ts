@@ -1,6 +1,6 @@
 import type { SectorKey } from "@/data/sectors";
 
-export type AdminTab = "overview" | "orders" | "companies" | "prices" | "users";
+export type AdminTab = "overview" | "orders" | "companies" | "prices" | "users" | "admins";
 export type AdminOrderStatus = "pending" | "paid" | "cancelled";
 export type AdminPaymentMethod = "wallet" | "card" | "demo";
 export type AdminOrderCompany = {
@@ -67,6 +67,15 @@ export type AdminUserRow = {
   giftsSent: number;
   walletBalance: number;
   disabled: boolean;
+};
+
+export type AdminManagementRow = {
+  id: string;
+  name: string;
+  email: string;
+  adminGrantedAt: string | null;
+  adminGrantedBy: { name: string; email: string } | null;
+  owner: boolean;
 };
 
 export type AdminOverviewData = {

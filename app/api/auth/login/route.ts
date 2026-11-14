@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";
-import { createSessionToken, publicUser, SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth";
+import { createSessionToken, isOwner, publicUser, SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth";
 import { authError, authSuccess, readAuthBody, sameOrigin } from "@/lib/auth-response";
 import { validateCredentials } from "@/lib/auth-validation";
 
@@ -20,6 +20,10 @@ export async function POST(request: Request) {
     const user = await User.findOne({ email: (body.email as string).trim().toLowerCase() }).select("+passwordHash");
     const matches = await bcrypt.compare(body.password as string, user?.passwordHash ?? DUMMY_HASH);
     if (!user || !matches || user.disabled) return authError("invalidCredentials", 401, request);
+    if (await isOwner({ id: String(user._id) }) && user.role !== "admin") {
+      user.role = "admin";
+      await user.save();
+    }
     const token = await createSessionToken(String(user._id));
     const response = authSuccess({ user: publicUser(user) });
     response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions);

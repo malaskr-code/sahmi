@@ -2,7 +2,7 @@ export const adminDashboardCopy = {
   en: {
     title: "Admin dashboard",
     subtitle: "Manage Sahmi orders, companies, pricing, and accounts.",
-    tabs: { overview: "Overview", orders: "Orders", companies: "Companies", prices: "Prices", users: "Users" },
+    tabs: { overview: "Overview", orders: "Orders", companies: "Companies", prices: "Prices", users: "Users", admins: "Admins" },
     common: {
       loading: "Loading…",
       loadError: "Could not load this information.",
@@ -144,6 +144,21 @@ export const adminDashboardCopy = {
       self: "You cannot disable your own account.",
       noUsers: "No users found.",
     },
+    admins: {
+      title: "Admins",
+      email: "Email address",
+      add: "Add admin",
+      adding: "Adding…",
+      addSuccess: "Admin access granted.",
+      dateAdded: "Date made admin",
+      addedBy: "Added by",
+      owner: "Owner",
+      remove: "Remove",
+      confirmRemove: "Remove admin access for {email}?",
+      removeSuccess: "Admin access removed.",
+      noAdmins: "No admins found.",
+      retry: "Try again",
+    },
     errors: {
       forbidden: "You do not have permission to do that.",
       serverError: "Something went wrong. Please try again.",
@@ -166,7 +181,7 @@ export const adminDashboardCopy = {
   ar: {
     title: "لوحة الإدارة",
     subtitle: "إدارة الطلبات والشركات والأسعار والحسابات في سهمي.",
-    tabs: { overview: "نظرة عامة", orders: "الطلبات", companies: "الشركات", prices: "الأسعار", users: "المستخدمون" },
+    tabs: { overview: "نظرة عامة", orders: "الطلبات", companies: "الشركات", prices: "الأسعار", users: "المستخدمون", admins: "المشرفون" },
     common: {
       loading: "جارٍ التحميل…",
       loadError: "تعذر تحميل البيانات.",
@@ -307,6 +322,21 @@ export const adminDashboardCopy = {
       enable: "تفعيل الحساب",
       self: "لا يمكنك تعطيل حسابك.",
       noUsers: "لا يوجد مستخدمون.",
+    },
+    admins: {
+      title: "المشرفون",
+      email: "البريد الإلكتروني",
+      add: "إضافة مشرف",
+      adding: "جارٍ الإضافة…",
+      addSuccess: "تم منح صلاحية المشرف.",
+      dateAdded: "تاريخ منح الصلاحية",
+      addedBy: "أضيف بواسطة",
+      owner: "المالك",
+      remove: "إزالة",
+      confirmRemove: "إزالة صلاحية المشرف عن {email}؟",
+      removeSuccess: "تمت إزالة صلاحية المشرف.",
+      noAdmins: "لا يوجد مشرفون.",
+      retry: "حاول مرة أخرى",
     },
     errors: {
       forbidden: "ليست لديك صلاحية لتنفيذ ذلك.",
